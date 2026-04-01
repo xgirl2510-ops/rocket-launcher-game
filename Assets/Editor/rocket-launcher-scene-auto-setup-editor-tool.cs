@@ -159,6 +159,26 @@ public partial class SceneSetupTool
             var autoPlayTransform = canvas.transform.Find("AutoPlayButton");
             if (autoPlayTransform != null)
                 so.FindProperty("_autoPlayButton").objectReferenceValue = autoPlayTransform.GetComponent<UnityEngine.UI.Button>();
+
+            var angleTextTransform = canvas.transform.Find("AngleText");
+            if (angleTextTransform != null)
+                so.FindProperty("_angleText").objectReferenceValue = angleTextTransform.GetComponent<TMPro.TextMeshProUGUI>();
+
+            var forceTextTransform = canvas.transform.Find("ForceText");
+            if (forceTextTransform != null)
+                so.FindProperty("_forceText").objectReferenceValue = forceTextTransform.GetComponent<TMPro.TextMeshProUGUI>();
+
+            var roundShotsTransform = canvas.transform.Find("RoundShotsText");
+            if (roundShotsTransform != null)
+                so.FindProperty("_roundShotsText").objectReferenceValue = roundShotsTransform.GetComponent<TMPro.TextMeshProUGUI>();
+
+            var totalShotsTransform = canvas.transform.Find("TotalShotsText");
+            if (totalShotsTransform != null)
+                so.FindProperty("_totalShotsText").objectReferenceValue = totalShotsTransform.GetComponent<TMPro.TextMeshProUGUI>();
+
+            var roundNumberTransform = canvas.transform.Find("RoundNumberText");
+            if (roundNumberTransform != null)
+                so.FindProperty("_roundNumberText").objectReferenceValue = roundNumberTransform.GetComponent<TMPro.TextMeshProUGUI>();
         }
 
         // Wire ObstacleSpawner

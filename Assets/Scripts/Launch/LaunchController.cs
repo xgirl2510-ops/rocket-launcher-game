@@ -42,12 +42,20 @@ public class LaunchController : MonoBehaviour
     [SerializeField] private TextMeshProUGUI _winText;
     [SerializeField] private Button _restartButton;
     [SerializeField] private Button _autoPlayButton;
+    [SerializeField] private TextMeshProUGUI _angleText;
+    [SerializeField] private TextMeshProUGUI _forceText;
+    [SerializeField] private TextMeshProUGUI _roundShotsText;
+    [SerializeField] private TextMeshProUGUI _totalShotsText;
+    [SerializeField] private TextMeshProUGUI _roundNumberText;
 
     private Camera _camera;
     private bool _isDragging;
     private bool _inputEnabled = true;
     private int _missCount;
     private bool _isAutoPlaying;
+    private int _roundShots;
+    private int _totalShots;
+    private int _roundNumber = 1;
     private const int MISSES_BEFORE_AUTOPLAY = 5;
 
     private void Awake()
@@ -78,6 +86,10 @@ public class LaunchController : MonoBehaviour
             _autoPlayButton.gameObject.SetActive(false);
             _autoPlayButton.onClick.AddListener(HandleAutoPlay);
         }
+        if (_angleText != null) _angleText.gameObject.SetActive(false);
+        if (_forceText != null) _forceText.gameObject.SetActive(false);
+
+        UpdateStatsUI();
 
         // Wait for intro to finish before enabling input
         DisableInput();
@@ -132,6 +144,9 @@ public class LaunchController : MonoBehaviour
         _aimArrow.Show();
         _aimArrow.UpdateArrow(launchDirection, normalizedForce);
         RotateRocketToDirection(launchDirection);
+
+        // Update hint texts if visible
+        UpdateHintTexts(launchDirection, normalizedForce);
     }
 
     private void HandleTouchEnded()
@@ -156,6 +171,10 @@ public class LaunchController : MonoBehaviour
         float normalizedForce = (clampedDistance - _minDragDistance) / (_maxDragDistance - _minDragDistance);
         float launchForce = Mathf.Lerp(_minLaunchForce, _maxLaunchForce, normalizedForce);
         Vector2 launchDirection = dragVector.normalized;
+
+        _roundShots++;
+        _totalShots++;
+        UpdateStatsUI();
 
         _rocket.Launch(launchDirection, launchForce);
         DisableInput();
@@ -199,9 +218,13 @@ public class LaunchController : MonoBehaviour
 
         _rocket.ResetToPosition(_spawnPoint.position);
 
-        // Show auto-play button after N misses
-        if (_missCount >= MISSES_BEFORE_AUTOPLAY && _autoPlayButton != null)
-            _autoPlayButton.gameObject.SetActive(true);
+        // Show hints after N misses
+        if (_missCount >= MISSES_BEFORE_AUTOPLAY)
+        {
+            if (_autoPlayButton != null) _autoPlayButton.gameObject.SetActive(true);
+            if (_angleText != null) _angleText.gameObject.SetActive(true);
+            if (_forceText != null) _forceText.gameObject.SetActive(true);
+        }
 
         EnableInput();
     }
@@ -221,6 +244,12 @@ public class LaunchController : MonoBehaviour
         _missCount = 0;
         if (_autoPlayButton != null)
             _autoPlayButton.gameObject.SetActive(false);
+        if (_angleText != null) _angleText.gameObject.SetActive(false);
+        if (_forceText != null) _forceText.gameObject.SetActive(false);
+
+        _roundNumber++;
+        _roundShots = 0;
+        UpdateStatsUI();
 
         // Randomize target BEFORE intro so camera shows new position
         RandomizeTarget();
@@ -296,6 +325,25 @@ public class LaunchController : MonoBehaviour
     {
         float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90f;
         _rocket.transform.rotation = Quaternion.Euler(0f, 0f, angle);
+    }
+
+    private void UpdateHintTexts(Vector2 direction, float normalizedForce)
+    {
+        if (_angleText == null || _forceText == null) return;
+        if (!_angleText.gameObject.activeSelf) return;
+
+        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+        float force = Mathf.Lerp(_minLaunchForce, _maxLaunchForce, normalizedForce);
+
+        _angleText.text = $"Góc: {angle:F1}°";
+        _forceText.text = $"Lực: {force:F1}";
+    }
+
+    private void UpdateStatsUI()
+    {
+        if (_roundShotsText != null) _roundShotsText.text = $"Bắn: {_roundShots}";
+        if (_totalShotsText != null) _totalShotsText.text = $"Tổng: {_totalShots}";
+        if (_roundNumberText != null) _roundNumberText.text = $"Ván: {_roundNumber}";
     }
 
     public void EnableInput()

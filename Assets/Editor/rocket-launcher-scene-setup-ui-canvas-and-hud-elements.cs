@@ -28,6 +28,49 @@ public partial class SceneSetupTool
         CreateTMPLabel(canvasGO, "MissText", "MISS!",    60, "#FFFFFF", new Vector2(0, 200), new Vector2(600, 110));
         CreateRestartButton(canvasGO);
         CreateAutoPlayButton(canvasGO);
+
+        // Hint labels (bottom-left, inactive until 5 misses)
+        CreateHintLabel(canvasGO, "AngleText", "Góc: 0°",  new Vector2(30, 80), false);
+        CreateHintLabel(canvasGO, "ForceText", "Lực: 0",   new Vector2(30, 30), false);
+
+        // Stats labels (top-right, always visible)
+        CreateHintLabel(canvasGO, "RoundShotsText", "Bắn: 0",  new Vector2(-30, -30),  true, TextAlignmentOptions.Right);
+        CreateHintLabel(canvasGO, "TotalShotsText", "Tổng: 0", new Vector2(-30, -75),  true, TextAlignmentOptions.Right);
+        CreateHintLabel(canvasGO, "RoundNumberText","Ván: 1",   new Vector2(-30, -120), true, TextAlignmentOptions.Right);
+    }
+
+    /// <summary>Creates a HUD label. Anchored bottom-left (hints) or top-right (stats).</summary>
+    private static void CreateHintLabel(GameObject parent, string name, string defaultText,
+        Vector2 anchoredPos, bool activeByDefault,
+        TextAlignmentOptions align = TextAlignmentOptions.Left)
+    {
+        var go = CreateUIElement(name, parent);
+        if (!activeByDefault) go.SetActive(false);
+
+        var rect = (RectTransform)go.transform;
+
+        bool isTopRight = align == TextAlignmentOptions.Right;
+        if (isTopRight)
+        {
+            rect.anchorMin = new Vector2(1f, 1f); // top-right
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot     = new Vector2(1f, 1f);
+        }
+        else
+        {
+            rect.anchorMin = new Vector2(0f, 0f); // bottom-left
+            rect.anchorMax = new Vector2(0f, 0f);
+            rect.pivot     = new Vector2(0f, 0f);
+        }
+
+        rect.anchoredPosition = anchoredPos;
+        rect.sizeDelta        = new Vector2(300, 50);
+
+        var tmp = go.AddComponent<TextMeshProUGUI>();
+        tmp.text      = defaultText;
+        tmp.fontSize  = 32;
+        tmp.alignment = align;
+        tmp.color     = Color.white;
     }
 
     private static void CreateAutoPlayButton(GameObject parent)
