@@ -115,6 +115,9 @@ public partial class SceneSetupTool
         var go = CreateEmpty("LaunchController", parent);
         var lc = go.AddComponent<LaunchController>();
 
+        // Add ObstacleSpawner on same GO
+        var os = go.AddComponent<ObstacleSpawner>();
+
         // Find scene references
         var rocket = GameObject.Find("Rocket");
         var aimArrow = GameObject.Find("AimArrow");
@@ -152,11 +155,25 @@ public partial class SceneSetupTool
             var restartTransform = canvas.transform.Find("RestartButton");
             if (restartTransform != null)
                 so.FindProperty("_restartButton").objectReferenceValue = restartTransform.GetComponent<UnityEngine.UI.Button>();
+
+            var autoPlayTransform = canvas.transform.Find("AutoPlayButton");
+            if (autoPlayTransform != null)
+                so.FindProperty("_autoPlayButton").objectReferenceValue = autoPlayTransform.GetComponent<UnityEngine.UI.Button>();
         }
 
+        // Wire ObstacleSpawner
+        so.FindProperty("_obstacleSpawner").objectReferenceValue = os;
         so.ApplyModifiedProperties();
 
-        Debug.Log("[SceneSetupTool] LaunchController wired — rocket, aimArrow, spawnPoint, vehicleCollider, camera.");
+        // Wire ObstacleSpawner references
+        var osSo = new SerializedObject(os);
+        if (spawnPoint != null)
+            osSo.FindProperty("_spawnPoint").objectReferenceValue = spawnPoint;
+        if (target != null)
+            osSo.FindProperty("_targetTransform").objectReferenceValue = target.transform;
+        osSo.ApplyModifiedProperties();
+
+        Debug.Log("[SceneSetupTool] LaunchController + ObstacleSpawner wired.");
     }
 
     private static void WireCameraController()

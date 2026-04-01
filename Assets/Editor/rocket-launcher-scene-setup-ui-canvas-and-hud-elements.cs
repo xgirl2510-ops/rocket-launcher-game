@@ -27,6 +27,37 @@ public partial class SceneSetupTool
         CreateTMPLabel(canvasGO, "WinText",  "YOU WIN!", 72, "#FFD700", new Vector2(0, 200), new Vector2(700, 130));
         CreateTMPLabel(canvasGO, "MissText", "MISS!",    60, "#FFFFFF", new Vector2(0, 200), new Vector2(600, 110));
         CreateRestartButton(canvasGO);
+        CreateAutoPlayButton(canvasGO);
+    }
+
+    private static void CreateAutoPlayButton(GameObject parent)
+    {
+        var go = CreateUIElement("AutoPlayButton", parent);
+
+        var rect = (RectTransform)go.transform;
+        rect.anchorMin        = new Vector2(1f, 0f); // bottom-right
+        rect.anchorMax        = new Vector2(1f, 0f);
+        rect.pivot            = new Vector2(1f, 0f);
+        rect.anchoredPosition = new Vector2(-30, 30);
+        rect.sizeDelta        = new Vector2(250, 70);
+
+        var img = go.AddComponent<Image>();
+        ColorUtility.TryParseHtmlString("#1A5276", out Color bgColor);
+        img.color = bgColor;
+        go.AddComponent<Button>();
+
+        var textGO   = CreateUIElement("Text", go);
+        var textRect = (RectTransform)textGO.transform;
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+
+        var tmp = textGO.AddComponent<TextMeshProUGUI>();
+        tmp.text      = "MÁY CHƠI";
+        tmp.fontSize  = 32;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.color     = Color.white;
     }
 
     /// <summary>Creates a centered TextMeshProUGUI label, inactive by default.</summary>

@@ -16,6 +16,7 @@ public class LaunchController : MonoBehaviour
     [SerializeField] private Transform _spawnPoint;
     [SerializeField] private CameraController _cameraController;
     [SerializeField] private Transform _targetTransform;
+    [SerializeField] private ObstacleSpawner _obstacleSpawner;
 
     [Header("Drag Settings")]
     [SerializeField, Range(0.3f, 1f)] private float _minDragDistance = 0.5f;
@@ -40,10 +41,14 @@ public class LaunchController : MonoBehaviour
     [Header("UI")]
     [SerializeField] private TextMeshProUGUI _winText;
     [SerializeField] private Button _restartButton;
+    [SerializeField] private Button _autoPlayButton;
 
     private Camera _camera;
     private bool _isDragging;
     private bool _inputEnabled = true;
+    private int _missCount;
+    private bool _isAutoPlaying;
+    private const int MISSES_BEFORE_AUTOPLAY = 5;
 
     private void Awake()
     {
@@ -67,6 +72,11 @@ public class LaunchController : MonoBehaviour
         {
             _restartButton.gameObject.SetActive(false);
             _restartButton.onClick.AddListener(HandleRestart);
+        }
+        if (_autoPlayButton != null)
+        {
+            _autoPlayButton.gameObject.SetActive(false);
+            _autoPlayButton.onClick.AddListener(HandleAutoPlay);
         }
 
         // Wait for intro to finish before enabling input
@@ -151,9 +161,15 @@ public class LaunchController : MonoBehaviour
         DisableInput();
     }
 
-    /// <summary>Rocket hit target — hide rocket, show win + restart button.</summary>
+    /// <summary>Rocket hit target — hide rocket, show win (or reset if auto-play demo).</summary>
     private void HandleTargetHit()
     {
+        if (_isAutoPlaying)
+        {
+            Invoke(nameof(ReloadAfterAutoPlay), _reloadDelay);
+            return;
+        }
+
         _rocket.gameObject.SetActive(false);
 
         if (_winText != null)
@@ -162,19 +178,31 @@ public class LaunchController : MonoBehaviour
             _restartButton.gameObject.SetActive(true);
     }
 
-    /// <summary>Rocket hit ground — wait then auto-reload.</summary>
+    /// <summary>Rocket hit ground — count miss (or reset if auto-play demo).</summary>
     private void HandleRocketMiss()
     {
+        if (_isAutoPlaying)
+        {
+            Invoke(nameof(ReloadAfterAutoPlay), _reloadDelay);
+            return;
+        }
+
+        _missCount++;
         Invoke(nameof(ReloadRocket), _reloadDelay);
     }
 
-    /// <summary>Return camera, reset rocket, randomize target, re-enable input.</summary>
+    /// <summary>Return camera, reset rocket, show autoplay if enough misses.</summary>
     private void ReloadRocket()
     {
         if (_cameraController != null)
             _cameraController.ReturnToVehicle();
 
         _rocket.ResetToPosition(_spawnPoint.position);
+
+        // Show auto-play button after N misses
+        if (_missCount >= MISSES_BEFORE_AUTOPLAY && _autoPlayButton != null)
+            _autoPlayButton.gameObject.SetActive(true);
+
         EnableInput();
     }
 
@@ -187,9 +215,12 @@ public class LaunchController : MonoBehaviour
         if (_restartButton != null)
             _restartButton.gameObject.SetActive(false);
 
-        // Re-enable rocket
+        // Re-enable rocket, reset counters
         _rocket.gameObject.SetActive(true);
         _rocket.ResetToPosition(_spawnPoint.position);
+        _missCount = 0;
+        if (_autoPlayButton != null)
+            _autoPlayButton.gameObject.SetActive(false);
 
         // Randomize target BEFORE intro so camera shows new position
         RandomizeTarget();
@@ -222,6 +253,43 @@ public class LaunchController : MonoBehaviour
         float x = Random.Range(_targetMinX, _targetMaxX);
         float y = Random.Range(_targetMinY, _targetMaxY);
         _targetTransform.position = new Vector3(x, y, _targetTransform.position.z);
+
+        // Respawn obstacles with safe trajectory to new target
+        if (_obstacleSpawner != null)
+            _obstacleSpawner.RespawnObstacles();
+    }
+
+    /// <summary>Auto-play: launch along safe trajectory, then reset for player to retry same layout.</summary>
+    private void HandleAutoPlay()
+    {
+        if (!_inputEnabled || _obstacleSpawner == null) return;
+
+        Vector2 dir = _obstacleSpawner.SafeLaunchDirection;
+        float force = _obstacleSpawner.SafeLaunchForce;
+        if (dir.sqrMagnitude < 0.01f) return;
+
+        // Hide autoplay button during demo
+        if (_autoPlayButton != null)
+            _autoPlayButton.gameObject.SetActive(false);
+
+        _isAutoPlaying = true;
+        RotateRocketToDirection(dir);
+        _rocket.Launch(dir, force);
+        DisableInput();
+    }
+
+    /// <summary>After auto-play demo, reset rocket for player to try same layout.</summary>
+    private void ReloadAfterAutoPlay()
+    {
+        _isAutoPlaying = false;
+
+        if (_cameraController != null)
+            _cameraController.ReturnToVehicle();
+
+        _rocket.gameObject.SetActive(true);
+        _rocket.ResetToPosition(_spawnPoint.position);
+        _missCount = 0; // Reset miss count
+        EnableInput();
     }
 
     private void RotateRocketToDirection(Vector2 direction)
