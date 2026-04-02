@@ -87,7 +87,7 @@ public class Rocket : MonoBehaviour
         if (vel.sqrMagnitude < 0.01f) return;
 
         float angle = Mathf.Atan2(vel.y, vel.x) * Mathf.Rad2Deg - 90f;
-        transform.rotation = Quaternion.Euler(0f, 0f, angle);
+        _rb.MoveRotation(angle);
     }
 
     private void OnCollisionEnter2D(Collision2D collision)

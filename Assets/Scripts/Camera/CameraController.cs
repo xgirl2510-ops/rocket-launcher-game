@@ -24,12 +24,11 @@ public class CameraController : MonoBehaviour
     [SerializeField] private float _homeY = 2f;  // Must match CamY in scene setup
 
     [Header("Follow")]
-    [SerializeField] private float _followSmoothTime = 0.05f;
+    [SerializeField] private float _followSmoothTime = 0.12f;
     [SerializeField] private float _followOffsetY = 2f;
 
     [Header("Return")]
-    [SerializeField] private float _returnSmoothTime = 0.5f;
-    [SerializeField] private float _returnThreshold = 0.1f;
+    [SerializeField] private float _returnDuration = 1.0f;
 
     public event Action OnIntroComplete;
     public event Action OnLookTargetComplete;
@@ -141,7 +140,7 @@ public class CameraController : MonoBehaviour
                 break;
 
             case CameraState.Returning:
-                ReturnToVehicle();
+                // Handled by coroutine
                 break;
         }
     }
@@ -159,27 +158,34 @@ public class CameraController : MonoBehaviour
         SetCameraXY(smoothed.x, smoothed.y);
     }
 
-    /// <summary>Called by GameManager after rocket lands to pan back to vehicle.</summary>
+    /// <summary>Called after rocket lands to smoothly pan back to vehicle.</summary>
     public void ReturnToVehicle()
     {
-        if (_currentState != CameraState.Returning)
+        if (_currentState == CameraState.Returning) return;
+        StartCoroutine(ReturnToVehicleCoroutine());
+    }
+
+    private IEnumerator ReturnToVehicleCoroutine()
+    {
+        _currentState = CameraState.Returning;
+
+        Vector2 startPos = new Vector2(transform.position.x, transform.position.y);
+        Vector2 endPos = _vehicleTransform != null
+            ? new Vector2(_vehicleTransform.position.x, _homeY)
+            : startPos;
+
+        float elapsed = 0f;
+        while (elapsed < _returnDuration)
         {
-            SetState(CameraState.Returning);
-            return;
+            elapsed += Time.deltaTime;
+            float t = Mathf.SmoothStep(0f, 1f, elapsed / _returnDuration);
+            Vector2 pos = Vector2.Lerp(startPos, endPos, t);
+            SetCameraXY(pos.x, pos.y);
+            yield return null;
         }
 
-        if (_vehicleTransform == null) return;
-
-        Vector2 target = new Vector2(_vehicleTransform.position.x, _homeY);
-        Vector2 current = new Vector2(transform.position.x, transform.position.y);
-        Vector2 smoothed = Vector2.SmoothDamp(current, target, ref _smoothVelocity, _returnSmoothTime);
-        SetCameraXY(smoothed.x, smoothed.y);
-
-        if (Vector2.Distance(smoothed, target) < _returnThreshold)
-        {
-            SetCameraXY(target.x, target.y);
-            SetState(CameraState.Idle);
-        }
+        SetCameraXY(endPos.x, endPos.y);
+        _currentState = CameraState.Idle;
     }
 
     /// <summary>Pan camera to target, wait 2s, pan back to vehicle.</summary>
