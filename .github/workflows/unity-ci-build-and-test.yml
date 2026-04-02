@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
 
+# UNITY_LICENSE secret setup:
+# 1. Install unity-activate: https://game.ci/docs/github/activation
+# 2. Run the activation workflow to get a .ulf license file
+# 3. Add the license file contents as a GitHub repo secret named UNITY_LICENSE
+# Docs: https://game.ci/docs/github/getting-started
 env:
   UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
 

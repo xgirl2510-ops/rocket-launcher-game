@@ -7,7 +7,7 @@ namespace RocketLauncher
     /// <summary>
     /// Camera state machine: Intro pan (Target -> Vehicle), Follow rocket, Return to vehicle.
     /// Uses LateUpdate for smooth follow after physics. Camera Z always stays at -10.
-    /// Includes screen shake on rocket impact.
+    /// Screen shake delegated to CameraScreenShake component.
     /// </summary>
     public class CameraController : MonoBehaviour
     {
@@ -50,10 +50,7 @@ namespace RocketLauncher
         private Camera _camera;
         private float _defaultOrthoSize;
 
-        // Screen shake state
-        private float _shakeDuration;
-        private float _shakeMagnitude;
-        private float _shakeElapsed;
+        private CameraScreenShake _shake;
 
         // Prevent coroutine race — only one camera transition at a time
         private Coroutine _activeCoroutine;
@@ -63,6 +60,8 @@ namespace RocketLauncher
             _defaultZ = transform.position.z;
             _camera = GetComponent<Camera>();
             _defaultOrthoSize = _camera.orthographicSize;
+            _shake = GetComponent<CameraScreenShake>();
+            if (_shake == null) _shake = gameObject.AddComponent<CameraScreenShake>();
         }
 
 #if UNITY_EDITOR
@@ -107,12 +106,7 @@ namespace RocketLauncher
 
             yield return new WaitForSeconds(_introPauseDuration);
 
-            Vector2 startPos = new Vector2(transform.position.x, transform.position.y);
-            Vector2 endPos = _vehicleTransform != null
-                ? new Vector2(_vehicleTransform.position.x, _homeY)
-                : startPos;
-
-            yield return PanCoroutine(startPos, endPos, _introPanDuration);
+            yield return PanCoroutine(CurrentXY, VehicleHome, _introPanDuration);
 
             _currentState = CameraState.Idle;
             OnIntroComplete?.Invoke();
@@ -155,24 +149,9 @@ namespace RocketLauncher
         {
             _currentState = CameraState.Returning;
 
-            Vector2 startPos = new Vector2(transform.position.x, transform.position.y);
-            Vector2 endPos = _vehicleTransform != null
-                ? new Vector2(_vehicleTransform.position.x, _homeY)
-                : startPos;
-            float startOrtho = _camera.orthographicSize;
+            yield return PanCoroutine(CurrentXY, VehicleHome, _returnDuration,
+                _camera.orthographicSize, _defaultOrthoSize);
 
-            float elapsed = 0f;
-            while (elapsed < _returnDuration)
-            {
-                elapsed += Time.deltaTime;
-                float t = Mathf.SmoothStep(0f, 1f, elapsed / _returnDuration);
-                SetCameraXY(Vector2.Lerp(startPos, endPos, t));
-                _camera.orthographicSize = Mathf.Lerp(startOrtho, _defaultOrthoSize, t);
-                yield return null;
-            }
-
-            SetCameraXY(endPos);
-            _camera.orthographicSize = _defaultOrthoSize;
             _currentState = CameraState.Idle;
         }
 
@@ -197,17 +176,13 @@ namespace RocketLauncher
         {
             _currentState = CameraState.LookingAtTarget;
 
-            Vector2 startPos = new Vector2(transform.position.x, transform.position.y);
             Vector2 targetPos = _targetTransform != null
                 ? new Vector2(_targetTransform.position.x, _homeY)
-                : startPos;
-            Vector2 vehiclePos = _vehicleTransform != null
-                ? new Vector2(_vehicleTransform.position.x, _homeY)
-                : targetPos;
+                : CurrentXY;
 
-            yield return PanCoroutine(startPos, targetPos, _lookTargetPanDuration);
+            yield return PanCoroutine(CurrentXY, targetPos, _lookTargetPanDuration);
             yield return new WaitForSeconds(_lookTargetPauseDuration);
-            yield return PanCoroutine(targetPos, vehiclePos, _lookTargetPanDuration);
+            yield return PanCoroutine(targetPos, VehicleHome, _lookTargetPanDuration);
 
             _currentState = CameraState.Idle;
             OnLookTargetComplete?.Invoke();
@@ -239,38 +214,40 @@ namespace RocketLauncher
         /// <summary>Trigger screen shake. Small shake on miss, bigger on hit.</summary>
         public void Shake(float duration, float magnitude)
         {
-            _shakeDuration = duration;
-            _shakeMagnitude = magnitude;
-            _shakeElapsed = 0f;
+            if (_shake != null) _shake.Shake(duration, magnitude);
         }
 
-        /// <summary>Smooth pan from <paramref name="from"/> to <paramref name="to"/> over <paramref name="duration"/> seconds.</summary>
-        private IEnumerator PanCoroutine(Vector2 from, Vector2 to, float duration)
+        /// <summary>
+        /// Smooth pan from <paramref name="from"/> to <paramref name="to"/> over <paramref name="duration"/> seconds.
+        /// Optionally lerps orthographic size when both ortho params are provided.
+        /// </summary>
+        private IEnumerator PanCoroutine(Vector2 from, Vector2 to, float duration,
+            float orthoFrom = -1f, float orthoTo = -1f)
         {
+            bool lerpOrtho = orthoFrom >= 0f && orthoTo >= 0f;
             float elapsed = 0f;
             while (elapsed < duration)
             {
                 elapsed += Time.deltaTime;
                 float t = Mathf.SmoothStep(0f, 1f, elapsed / duration);
                 SetCameraXY(Vector2.Lerp(from, to, t));
+                if (lerpOrtho) _camera.orthographicSize = Mathf.Lerp(orthoFrom, orthoTo, t);
                 yield return null;
             }
             SetCameraXY(to);
+            if (lerpOrtho) _camera.orthographicSize = orthoTo;
         }
+
+        private Vector2 CurrentXY => new Vector2(transform.position.x, transform.position.y);
+        private Vector2 VehicleHome => _vehicleTransform != null
+            ? new Vector2(_vehicleTransform.position.x, _homeY)
+            : CurrentXY;
 
         private void SetCameraXY(Vector2 pos) => SetCameraXY(pos.x, pos.y);
 
         private void SetCameraXY(float x, float y)
         {
-            Vector2 shakeOffset = Vector2.zero;
-
-            if (_shakeElapsed < _shakeDuration)
-            {
-                _shakeElapsed += Time.deltaTime;
-                float decay = 1f - (_shakeElapsed / _shakeDuration);
-                shakeOffset = UnityEngine.Random.insideUnitCircle * _shakeMagnitude * decay;
-            }
-
+            Vector2 shakeOffset = _shake != null ? _shake.GetOffset() : Vector2.zero;
             transform.position = new Vector3(x + shakeOffset.x, y + shakeOffset.y, _defaultZ);
         }
     }

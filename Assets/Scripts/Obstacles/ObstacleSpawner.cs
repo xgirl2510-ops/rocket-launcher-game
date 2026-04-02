@@ -67,11 +67,16 @@ namespace RocketLauncher
             float dx = diff.x;
             float dy = diff.y;
 
+            // Compute an initial speed estimate, then clamp to launch force range
+            // BEFORE solving for the angle so theta is correct for the actual speed.
             float vSquared = g * (dy + Mathf.Sqrt(dx * dx + dy * dy)) * 1.5f;
             float v = Mathf.Sqrt(Mathf.Max(vSquared, 100f));
+            float vClamped = Mathf.Clamp(v, GameConstants.MinLaunchForce, GameConstants.MaxLaunchForce);
 
-            float v4 = v * v * v * v;
-            float discriminant = v4 - g * (g * dx * dx + 2f * dy * v * v);
+            // Solve launch angle using clamped velocity
+            float vc2 = vClamped * vClamped;
+            float vc4 = vc2 * vc2;
+            float discriminant = vc4 - g * (g * dx * dx + 2f * dy * vc2);
 
             float theta;
             if (discriminant < 0f)
@@ -80,12 +85,10 @@ namespace RocketLauncher
             }
             else
             {
-                theta = Mathf.Atan2(v * v + Mathf.Sqrt(discriminant), g * dx);
+                // High-arc solution: atan2(v^2 + sqrt(disc), g*dx)
+                theta = Mathf.Atan2(vc2 + Mathf.Sqrt(discriminant), g * dx);
             }
 
-            // Clamp speed to the same range used at launch so the trajectory arc
-            // matches the rocket's actual flight path during auto-play.
-            float vClamped = Mathf.Clamp(v, GameConstants.MinLaunchForce, GameConstants.MaxLaunchForce);
             float vx = vClamped * Mathf.Cos(theta);
             float vy = vClamped * Mathf.Sin(theta);
 

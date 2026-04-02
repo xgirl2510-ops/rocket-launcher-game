@@ -8,6 +8,7 @@ namespace RocketLauncher
     /// HUD management for RoundManager: win text, buttons, hint labels, stats display.
     /// Singleton so RoundManager can access it without circular SerializeField refs.
     /// </summary>
+    [DisallowMultipleComponent]
     public class RoundManagerHUD : MonoBehaviour
     {
         public static RoundManagerHUD Instance { get; private set; }

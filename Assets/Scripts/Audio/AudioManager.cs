@@ -6,6 +6,7 @@ namespace RocketLauncher
     /// Singleton that manages all game audio.
     /// Uses mp3 files for launch/flight/boom, procedural clips for UI sounds and win jingle.
     /// </summary>
+    [DisallowMultipleComponent]
     public class AudioManager : MonoBehaviour
     {
         public static AudioManager Instance { get; private set; }
