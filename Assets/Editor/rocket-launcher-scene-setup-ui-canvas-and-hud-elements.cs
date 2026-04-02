@@ -4,9 +4,9 @@ using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// Partial class: creates the Canvas with WinText, MissText, and RestartButton HUD elements.
-/// Requires TextMeshPro package. Part of the SceneSetupTool suite.
-/// NOTE: Add an EventSystem to the scene (GameObject > UI > Event System) for button input.
+/// Partial class: creates the Canvas with HUD elements.
+/// Layout: stats top-left (1 line), hints bottom-left, buttons bottom-center-right,
+/// win/continue centered.
 /// </summary>
 public partial class SceneSetupTool
 {
@@ -16,7 +16,6 @@ public partial class SceneSetupTool
         var canvas   = canvasGO.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
 
-        // Scale UI for portrait mobile — spec: 1080x1920 reference, match 0.5
         var scaler = canvasGO.AddComponent<CanvasScaler>();
         scaler.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1080, 1920);
@@ -24,71 +23,90 @@ public partial class SceneSetupTool
 
         canvasGO.AddComponent<GraphicRaycaster>();
 
+        // Center overlays (hidden by default)
         CreateTMPLabel(canvasGO, "WinText",  "YOU WIN!", 72, "#FFD700", new Vector2(0, 200), new Vector2(700, 130));
         CreateTMPLabel(canvasGO, "MissText", "MISS!",    60, "#FFFFFF", new Vector2(0, 200), new Vector2(600, 110));
         CreateRestartButton(canvasGO);
-        CreateAutoPlayButton(canvasGO);
 
-        CreateLookTargetButton(canvasGO);
+        // Bottom-center buttons
+        CreateBottomButtons(canvasGO);
 
         // Hint labels (bottom-left, inactive until 5 misses)
-        CreateHintLabel(canvasGO, "AngleText", "Góc: 0°",  new Vector2(30, 80), false);
-        CreateHintLabel(canvasGO, "ForceText", "Lực: 0",   new Vector2(30, 30), false);
+        CreateHintLabel(canvasGO, "AngleText", "Angle: 0°", new Vector2(30, 80));
+        CreateHintLabel(canvasGO, "ForceText", "Force: 0",  new Vector2(30, 30));
 
-        // Stats labels (top-right, always visible)
-        CreateHintLabel(canvasGO, "RoundShotsText",  "Bắn: 0",      new Vector2(-30, -30),  true, TextAlignmentOptions.Right);
-        CreateHintLabel(canvasGO, "TotalShotsText",  "Tổng: 0",     new Vector2(-30, -75),  true, TextAlignmentOptions.Right);
-        CreateHintLabel(canvasGO, "RoundNumberText", "Ván: 1",      new Vector2(-30, -120), true, TextAlignmentOptions.Right);
-        CreateHintLabel(canvasGO, "BestScoreText",   "Kỷ lục: --",  new Vector2(-30, -165), true, TextAlignmentOptions.Right);
+        // Compact stats line (top-left, always visible)
+        CreateStatsLabel(canvasGO);
     }
 
-    /// <summary>Creates a HUD label. Anchored bottom-left (hints) or top-right (stats).</summary>
+    /// <summary>Single compact stats line: "Round 1 · Shots 0 · Best --"</summary>
+    private static void CreateStatsLabel(GameObject parent)
+    {
+        var go = CreateUIElement("StatsText", parent);
+        var rect = (RectTransform)go.transform;
+        rect.anchorMin = new Vector2(0f, 1f); // top-left
+        rect.anchorMax = new Vector2(0f, 1f);
+        rect.pivot     = new Vector2(0f, 1f);
+        rect.anchoredPosition = new Vector2(30, -30);
+        rect.sizeDelta        = new Vector2(600, 50);
+
+        var tmp = go.AddComponent<TextMeshProUGUI>();
+        tmp.text      = "Round 1  ·  Shots 0  ·  Best --";
+        tmp.fontSize  = 28;
+        tmp.alignment = TextAlignmentOptions.Left;
+        tmp.color     = Color.white;
+    }
+
+    /// <summary>Bottom hint labels (anchored bottom-left).</summary>
     private static void CreateHintLabel(GameObject parent, string name, string defaultText,
-        Vector2 anchoredPos, bool activeByDefault,
-        TextAlignmentOptions align = TextAlignmentOptions.Left)
+        Vector2 anchoredPos)
     {
         var go = CreateUIElement(name, parent);
-        if (!activeByDefault) go.SetActive(false);
+        go.SetActive(false);
 
         var rect = (RectTransform)go.transform;
-
-        bool isTopRight = align == TextAlignmentOptions.Right;
-        if (isTopRight)
-        {
-            rect.anchorMin = new Vector2(1f, 1f); // top-right
-            rect.anchorMax = new Vector2(1f, 1f);
-            rect.pivot     = new Vector2(1f, 1f);
-        }
-        else
-        {
-            rect.anchorMin = new Vector2(0f, 0f); // bottom-left
-            rect.anchorMax = new Vector2(0f, 0f);
-            rect.pivot     = new Vector2(0f, 0f);
-        }
-
+        rect.anchorMin = new Vector2(0f, 0f);
+        rect.anchorMax = new Vector2(0f, 0f);
+        rect.pivot     = new Vector2(0f, 0f);
         rect.anchoredPosition = anchoredPos;
         rect.sizeDelta        = new Vector2(300, 50);
 
         var tmp = go.AddComponent<TextMeshProUGUI>();
         tmp.text      = defaultText;
         tmp.fontSize  = 32;
-        tmp.alignment = align;
+        tmp.alignment = TextAlignmentOptions.Left;
         tmp.color     = Color.white;
     }
 
-    private static void CreateAutoPlayButton(GameObject parent)
+    /// <summary>VIEW TARGET + AUTO PLAY buttons side by side at bottom-center-right.</summary>
+    private static void CreateBottomButtons(GameObject parent)
     {
-        var go = CreateUIElement("AutoPlayButton", parent);
+        // VIEW TARGET — bottom, slightly left of center-right
+        CreateBottomButton(parent, "LookTargetButton", "VIEW TARGET",
+            new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+            new Vector2(-140, 30), new Vector2(250, 60), "#2C3E50", 28);
 
+        // AUTO PLAY — bottom, right of VIEW TARGET (hidden until 5 misses)
+        var autoGo = CreateBottomButton(parent, "AutoPlayButton", "AUTO PLAY",
+            new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+            new Vector2(140, 30), new Vector2(250, 60), "#1A5276", 28);
+        autoGo.SetActive(false);
+    }
+
+    private static GameObject CreateBottomButton(GameObject parent, string name, string label,
+        Vector2 anchorMin, Vector2 anchorMax, Vector2 pivot,
+        Vector2 anchoredPos, Vector2 sizeDelta, string hexColor, float fontSize)
+    {
+        var go = CreateUIElement(name, parent);
         var rect = (RectTransform)go.transform;
-        rect.anchorMin        = new Vector2(1f, 0f); // bottom-right
-        rect.anchorMax        = new Vector2(1f, 0f);
-        rect.pivot            = new Vector2(1f, 0f);
-        rect.anchoredPosition = new Vector2(-30, 30);
-        rect.sizeDelta        = new Vector2(250, 70);
+        rect.anchorMin        = anchorMin;
+        rect.anchorMax        = anchorMax;
+        rect.pivot            = pivot;
+        rect.anchoredPosition = anchoredPos;
+        rect.sizeDelta        = sizeDelta;
 
         var img = go.AddComponent<Image>();
-        ColorUtility.TryParseHtmlString("#1A5276", out Color bgColor);
+        ColorUtility.TryParseHtmlString(hexColor, out Color bgColor);
         img.color = bgColor;
         go.AddComponent<Button>();
 
@@ -100,48 +118,19 @@ public partial class SceneSetupTool
         textRect.offsetMax = Vector2.zero;
 
         var tmp = textGO.AddComponent<TextMeshProUGUI>();
-        tmp.text      = "MÁY CHƠI";
-        tmp.fontSize  = 32;
+        tmp.text      = label;
+        tmp.fontSize  = fontSize;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color     = Color.white;
-    }
 
-    /// <summary>Creates the Look Target button (top-left, always visible).</summary>
-    private static void CreateLookTargetButton(GameObject parent)
-    {
-        var go = CreateUIElement("LookTargetButton", parent);
-
-        var rect = (RectTransform)go.transform;
-        rect.anchorMin        = new Vector2(0f, 1f); // top-left
-        rect.anchorMax        = new Vector2(0f, 1f);
-        rect.pivot            = new Vector2(0f, 1f);
-        rect.anchoredPosition = new Vector2(30, -30);
-        rect.sizeDelta        = new Vector2(250, 70);
-
-        var img = go.AddComponent<Image>();
-        ColorUtility.TryParseHtmlString("#2C3E50", out Color bgColor);
-        img.color = bgColor;
-        go.AddComponent<Button>();
-
-        var textGO   = CreateUIElement("Text", go);
-        var textRect = (RectTransform)textGO.transform;
-        textRect.anchorMin = Vector2.zero;
-        textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = Vector2.zero;
-        textRect.offsetMax = Vector2.zero;
-
-        var tmp = textGO.AddComponent<TextMeshProUGUI>();
-        tmp.text      = "XEM MỤC TIÊU";
-        tmp.fontSize  = 30;
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.color     = Color.white;
+        return go;
     }
 
     /// <summary>Creates a centered TextMeshProUGUI label, inactive by default.</summary>
     private static void CreateTMPLabel(GameObject parent, string name, string text,
         float fontSize, string hexColor, Vector2 anchoredPos, Vector2 sizeDelta)
     {
-        var go   = CreateUIElement(name, parent);
+        var go = CreateUIElement(name, parent);
         go.SetActive(false);
 
         var rect = (RectTransform)go.transform;
@@ -158,10 +147,10 @@ public partial class SceneSetupTool
         tmp.color = color;
     }
 
-    /// <summary>Creates the restart button with dark-green background, inactive by default.</summary>
+    /// <summary>CONTINUE button — center, inactive by default.</summary>
     private static void CreateRestartButton(GameObject parent)
     {
-        var go   = CreateUIElement("RestartButton", parent);
+        var go = CreateUIElement("RestartButton", parent);
         go.SetActive(false);
 
         var rect = (RectTransform)go.transform;
@@ -174,9 +163,7 @@ public partial class SceneSetupTool
         ColorUtility.TryParseHtmlString("#2D5016", out Color bgColor);
         img.color = bgColor;
         go.AddComponent<Button>();
-        // OnClick → GameManager.Instance.ResetRound() — wire up in Inspector or via GameManager.cs
 
-        // Label text child
         var textGO   = CreateUIElement("Text", go);
         var textRect = (RectTransform)textGO.transform;
         textRect.anchorMin = Vector2.zero;
@@ -185,7 +172,7 @@ public partial class SceneSetupTool
         textRect.offsetMax = Vector2.zero;
 
         var tmp = textGO.AddComponent<TextMeshProUGUI>();
-        tmp.text      = "RESTART";
+        tmp.text      = "CONTINUE";
         tmp.fontSize  = 40;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color     = Color.white;

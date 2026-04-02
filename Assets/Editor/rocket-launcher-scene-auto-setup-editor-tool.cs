@@ -43,6 +43,7 @@ public partial class SceneSetupTool
         var uiSep     = CreateEmpty("--- UI ---");
 
         CreateEmpty("GameManager", managers);
+        SetupAudio(managers);
         CreateEnvironment(envParent);
         CreateGameplay(gameplay);
         CreateCanvas(uiSep);
@@ -90,6 +91,7 @@ public partial class SceneSetupTool
         var uiSep     = CreateEmpty("--- UI ---");
 
         CreateEmpty("GameManager", managers);
+        SetupAudio(managers);
         CreateEnvironment(envParent);
         CreateGameplay(gameplay);
         CreateCanvas(uiSep);
@@ -106,6 +108,28 @@ public partial class SceneSetupTool
         System.IO.Directory.CreateDirectory("Assets/Scenes");
         EditorSceneManager.SaveScene(scene, scenePath);
         Debug.Log("[SceneSetupTool] Batch setup complete. Scene saved to " + scenePath);
+    }
+
+    // ── Audio ─────────────────────────────────────────────────────────────────
+
+    private static void SetupAudio(GameObject parent)
+    {
+        var go = CreateEmpty("AudioManager", parent);
+        var am = go.AddComponent<AudioManager>();
+
+        // Wire mp3 clips from Assets/Audio/
+        var so = new SerializedObject(am);
+        var launchClip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/rocket-start.mp3");
+        var thrustClip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/rocket-flight.mp3");
+        var boomClip   = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/rocket-boom.mp3");
+
+        if (launchClip != null) so.FindProperty("_launchClip").objectReferenceValue = launchClip;
+        if (thrustClip != null) so.FindProperty("_thrustClip").objectReferenceValue = thrustClip;
+        if (boomClip != null)   so.FindProperty("_boomClip").objectReferenceValue = boomClip;
+        so.ApplyModifiedProperties();
+
+        Undo.RegisterCreatedObjectUndo(go, "Create AudioManager");
+        Debug.Log("[SceneSetupTool] AudioManager created + audio clips wired.");
     }
 
     // ── Launch controller wiring ────────────────────────────────────────────
@@ -172,21 +196,9 @@ public partial class SceneSetupTool
             if (forceTextTransform != null)
                 so.FindProperty("_forceText").objectReferenceValue = forceTextTransform.GetComponent<TMPro.TextMeshProUGUI>();
 
-            var roundShotsTransform = canvas.transform.Find("RoundShotsText");
-            if (roundShotsTransform != null)
-                so.FindProperty("_roundShotsText").objectReferenceValue = roundShotsTransform.GetComponent<TMPro.TextMeshProUGUI>();
-
-            var totalShotsTransform = canvas.transform.Find("TotalShotsText");
-            if (totalShotsTransform != null)
-                so.FindProperty("_totalShotsText").objectReferenceValue = totalShotsTransform.GetComponent<TMPro.TextMeshProUGUI>();
-
-            var roundNumberTransform = canvas.transform.Find("RoundNumberText");
-            if (roundNumberTransform != null)
-                so.FindProperty("_roundNumberText").objectReferenceValue = roundNumberTransform.GetComponent<TMPro.TextMeshProUGUI>();
-
-            var bestScoreTransform = canvas.transform.Find("BestScoreText");
-            if (bestScoreTransform != null)
-                so.FindProperty("_bestScoreText").objectReferenceValue = bestScoreTransform.GetComponent<TMPro.TextMeshProUGUI>();
+            var statsTransform = canvas.transform.Find("StatsText");
+            if (statsTransform != null)
+                so.FindProperty("_statsText").objectReferenceValue = statsTransform.GetComponent<TMPro.TextMeshProUGUI>();
         }
 
         // Wire ObstacleSpawner

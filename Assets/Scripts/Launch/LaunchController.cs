@@ -45,10 +45,7 @@ public class LaunchController : MonoBehaviour
     [SerializeField] private Button _lookTargetButton;
     [SerializeField] private TextMeshProUGUI _angleText;
     [SerializeField] private TextMeshProUGUI _forceText;
-    [SerializeField] private TextMeshProUGUI _roundShotsText;
-    [SerializeField] private TextMeshProUGUI _totalShotsText;
-    [SerializeField] private TextMeshProUGUI _roundNumberText;
-    [SerializeField] private TextMeshProUGUI _bestScoreText;
+    [SerializeField] private TextMeshProUGUI _statsText;
 
     [Header("Screen Shake")]
     [SerializeField] private float _missShakeDuration = 0.2f;
@@ -59,6 +56,7 @@ public class LaunchController : MonoBehaviour
     private Camera _camera;
     private bool _isDragging;
     private bool _inputEnabled = true;
+    private bool _stretchPlayed;
     private int _missCount;
     private bool _isAutoPlaying;
     private int _roundShots;
@@ -103,7 +101,6 @@ public class LaunchController : MonoBehaviour
         if (_forceText != null) _forceText.gameObject.SetActive(false);
 
         UpdateStatsUI();
-        UpdateBestScoreUI();
 
         // Wait for intro to finish before enabling input
         DisableInput();
@@ -135,6 +132,7 @@ public class LaunchController : MonoBehaviour
         Vector2 worldPos = _camera.ScreenToWorldPoint(Input.mousePosition);
         if (_vehicleCollider == null || !_vehicleCollider.OverlapPoint(worldPos)) return;
         _isDragging = true;
+        _stretchPlayed = false;
     }
 
     private void HandleTouchMoved()
@@ -158,6 +156,12 @@ public class LaunchController : MonoBehaviour
         _aimArrow.Show();
         _aimArrow.UpdateArrow(launchDirection, normalizedForce);
         RotateRocketToDirection(launchDirection);
+
+        if (!_stretchPlayed && AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayStretch();
+            _stretchPlayed = true;
+        }
 
         // Update hint texts if visible
         UpdateHintTexts(launchDirection, normalizedForce);
@@ -191,12 +195,24 @@ public class LaunchController : MonoBehaviour
         UpdateStatsUI();
 
         _rocket.Launch(launchDirection, launchForce);
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayLaunch();
+            AudioManager.Instance.StartThrust();
+        }
         DisableInput();
     }
 
     /// <summary>Rocket hit target — hide rocket, show win (or reset if auto-play demo).</summary>
     private void HandleTargetHit()
     {
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.StopThrust();
+            AudioManager.Instance.PlayHitTarget();
+            AudioManager.Instance.PlayWin();
+        }
+
         // Screen shake on hit (bigger)
         if (_cameraController != null)
             _cameraController.Shake(_hitShakeDuration, _hitShakeMagnitude);
@@ -211,7 +227,7 @@ public class LaunchController : MonoBehaviour
         if (_bestScore == 0 || _roundShots < _bestScore)
         {
             _bestScore = _roundShots;
-            UpdateBestScoreUI();
+            UpdateStatsUI();
         }
 
         _rocket.gameObject.SetActive(false);
@@ -225,6 +241,12 @@ public class LaunchController : MonoBehaviour
     /// <summary>Rocket hit ground — count miss (or reset if auto-play demo).</summary>
     private void HandleRocketMiss()
     {
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.StopThrust();
+            AudioManager.Instance.PlayHitGround();
+        }
+
         // Screen shake on miss (small)
         if (_cameraController != null)
             _cameraController.Shake(_missShakeDuration, _missShakeMagnitude);
@@ -261,6 +283,9 @@ public class LaunchController : MonoBehaviour
     /// <summary>Restart button clicked — randomize target, intro pan, then enable input.</summary>
     private void HandleRestart()
     {
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayClick();
+
         // Hide UI
         if (_winText != null)
             _winText.gameObject.SetActive(false);
@@ -323,6 +348,9 @@ public class LaunchController : MonoBehaviour
     {
         if (!_inputEnabled || _obstacleSpawner == null) return;
 
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayClick();
+
         Vector2 dir = _obstacleSpawner.SafeLaunchDirection;
         float force = _obstacleSpawner.SafeLaunchForce;
         if (dir.sqrMagnitude < 0.01f) return;
@@ -334,6 +362,11 @@ public class LaunchController : MonoBehaviour
         _isAutoPlaying = true;
         RotateRocketToDirection(dir);
         _rocket.Launch(dir, force);
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayLaunch();
+            AudioManager.Instance.StartThrust();
+        }
         DisableInput();
     }
 
@@ -384,21 +417,15 @@ public class LaunchController : MonoBehaviour
         float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
         float force = Mathf.Lerp(_minLaunchForce, _maxLaunchForce, normalizedForce);
 
-        _angleText.text = $"Góc: {angle:F1}°";
-        _forceText.text = $"Lực: {force:F1}";
+        _angleText.text = $"Angle: {angle:F1}°";
+        _forceText.text = $"Force: {force:F1}";
     }
 
     private void UpdateStatsUI()
     {
-        if (_roundShotsText != null) _roundShotsText.text = $"Bắn: {_roundShots}";
-        if (_totalShotsText != null) _totalShotsText.text = $"Tổng: {_totalShots}";
-        if (_roundNumberText != null) _roundNumberText.text = $"Ván: {_roundNumber}";
-    }
-
-    private void UpdateBestScoreUI()
-    {
-        if (_bestScoreText != null)
-            _bestScoreText.text = _bestScore > 0 ? $"Kỷ lục: {_bestScore}" : "Kỷ lục: --";
+        if (_statsText == null) return;
+        string best = _bestScore > 0 ? _bestScore.ToString() : "--";
+        _statsText.text = $"Round {_roundNumber}  ·  Shots {_roundShots}  ·  Best {best}";
     }
 
     public void EnableInput()

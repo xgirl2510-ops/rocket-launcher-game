@@ -20,9 +20,13 @@ public class RocketDebris : MonoBehaviour
     private const float GroundY = -5f; // must match GroundTop in scene setup
     private const float Gravity = 12f;
 
+    private const float AutoDestroyDelay = 3f; // debris fades and self-destructs
+
     private Vector2 _velocity;
     private float _angularSpeed;
     private bool _grounded;
+    private float _groundedTimer;
+    private SpriteRenderer _sr;
 
     /// <summary>Spawn debris pieces at position flying outward.</summary>
     public static void Spawn(Vector2 position, int count = 16)
@@ -75,9 +79,28 @@ public class RocketDebris : MonoBehaviour
         _allDebris.Clear();
     }
 
+    private void Start()
+    {
+        _sr = GetComponent<SpriteRenderer>();
+    }
+
     private void Update()
     {
-        if (_grounded) return;
+        if (_grounded)
+        {
+            // Fade out then self-destruct
+            _groundedTimer += Time.deltaTime;
+            if (_sr != null)
+            {
+                float fade = 1f - Mathf.Clamp01(_groundedTimer / AutoDestroyDelay);
+                var c = _sr.color;
+                c.a = fade;
+                _sr.color = c;
+            }
+            if (_groundedTimer >= AutoDestroyDelay)
+                Destroy(gameObject);
+            return;
+        }
 
         // Apply gravity
         _velocity.y -= Gravity * Time.deltaTime;
