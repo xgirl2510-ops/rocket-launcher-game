@@ -11,8 +11,8 @@ public class RocketTrail : MonoBehaviour
     [SerializeField] private float _emissionRate = 40f;
     [SerializeField] private float _particleLifetime = 0.4f;
     [SerializeField] private float _startSize = 0.15f;
-    [SerializeField] private Color _startColor = new Color(1f, 0.6f, 0f, 0.9f);  // orange
-    [SerializeField] private Color _endColor = new Color(1f, 1f, 0f, 0f);         // yellow, fade out
+    [SerializeField] private Color _startColor = new Color(1f, 0.3f, 0f, 1f);   // bright red-orange
+    [SerializeField] private Color _endColor = new Color(0.4f, 0.4f, 0.4f, 0f); // grey, fade out
 
     private ParticleSystem _ps;
 
@@ -63,7 +63,7 @@ public class RocketTrail : MonoBehaviour
         main.startLifetime = _particleLifetime;
         main.startSpeed = 0.5f;
         main.startSize = _startSize;
-        main.startColor = _startColor;
+        main.startColor = new Color(1f, 0.2f, 0f, 1f); // red-orange at spawn
         main.simulationSpace = ParticleSystemSimulationSpace.World;
         main.maxParticles = 200;
         main.playOnAwake = false;
@@ -84,24 +84,27 @@ public class RocketTrail : MonoBehaviour
         sizeOverLifetime.enabled = true;
         sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.1f));
 
-        // Color over lifetime: orange to yellow, fade out
+        // Color over lifetime: red (near rocket) → orange → dark grey smoke, fade out
         var colorOverLifetime = ps.colorOverLifetime;
         colorOverLifetime.enabled = true;
         var gradient = new Gradient();
         gradient.SetKeys(
             new GradientColorKey[] {
-                new GradientColorKey(_startColor, 0f),
-                new GradientColorKey(_endColor, 1f)
+                new GradientColorKey(new Color(1f, 0.1f, 0f), 0f),     // red
+                new GradientColorKey(new Color(1f, 0.5f, 0f), 0.35f),  // orange
+                new GradientColorKey(new Color(0.25f, 0.22f, 0.2f), 1f) // dark grey-black smoke
             },
             new GradientAlphaKey[] {
-                new GradientAlphaKey(0.9f, 0f),
+                new GradientAlphaKey(1f, 0f),
+                new GradientAlphaKey(0.6f, 0.5f),
                 new GradientAlphaKey(0f, 1f)
             }
         );
         colorOverLifetime.color = gradient;
 
-        // Renderer: use default particle material
+        // Renderer: must assign material or particles show as pink
         var renderer = ps.GetComponent<ParticleSystemRenderer>();
+        renderer.material = new Material(Shader.Find("Particles/Standard Unlit"));
         renderer.sortingLayerName = "Projectile";
         renderer.sortingOrder = -1; // behind rocket sprite
 
