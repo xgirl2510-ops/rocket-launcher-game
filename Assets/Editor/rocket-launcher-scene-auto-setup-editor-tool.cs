@@ -62,7 +62,7 @@ namespace RocketLauncher.Editor
             ClearScene();
             SetupTags();
             SetupSortingLayers();
-            SetupLayer(6, "Rocket");
+            SetupLayer(8, "Rocket");
 
             SetupCamera();
 

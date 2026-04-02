@@ -100,7 +100,7 @@ namespace RocketLauncher
             float vy = v * Mathf.Sin(theta);
 
             _lastLaunchDir = new Vector2(vx, vy).normalized;
-            _lastLaunchForce = v;
+            _lastLaunchForce = Mathf.Clamp(v, GameConstants.MinLaunchForce, GameConstants.MaxLaunchForce);
 
             float totalTime = Mathf.Abs(dx) / Mathf.Max(vx, 0.1f);
 

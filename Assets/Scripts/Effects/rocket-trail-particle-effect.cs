@@ -20,7 +20,14 @@ namespace RocketLauncher
         private static Material _cachedParticleMaterial;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStaticState() => _cachedParticleMaterial = null;
+        private static void ResetStaticState()
+        {
+            if (_cachedParticleMaterial != null)
+            {
+                Object.Destroy(_cachedParticleMaterial);
+                _cachedParticleMaterial = null;
+            }
+        }
 
         private void Awake()
         {
@@ -51,15 +58,6 @@ namespace RocketLauncher
         {
             if (_ps == null) return;
             _ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-        }
-
-        private void OnDestroy()
-        {
-            if (_cachedParticleMaterial != null)
-            {
-                Destroy(_cachedParticleMaterial);
-                _cachedParticleMaterial = null;
-            }
         }
 
         /// <summary>Get or create a shared particle material using Sprites/Default (always included in builds).</summary>

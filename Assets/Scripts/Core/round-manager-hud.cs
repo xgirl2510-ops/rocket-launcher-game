@@ -27,10 +27,6 @@ namespace RocketLauncher
         [Header("Round Manager")]
         [SerializeField] private RoundManager _roundManager;
 
-        [Header("Launch Force (for hint display)")]
-        [SerializeField] private float _minLaunchForce = 5f;
-        [SerializeField] private float _maxLaunchForce = 30f;
-
         private void Awake()
         {
             if (Instance != null && Instance != this)
@@ -104,7 +100,7 @@ namespace RocketLauncher
             if (!_angleText.gameObject.activeSelf) return;
 
             float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-            float force = Mathf.Lerp(_minLaunchForce, _maxLaunchForce, normalizedForce);
+            float force = Mathf.Lerp(GameConstants.MinLaunchForce, GameConstants.MaxLaunchForce, normalizedForce);
 
             _angleText.text = $"Angle: {angle:F1}\u00b0";
             _forceText.text = $"Force: {force:F1}";

@@ -103,17 +103,8 @@ namespace RocketLauncher
                 ? new Vector2(_vehicleTransform.position.x, _homeY)
                 : startPos;
 
-            float elapsed = 0f;
-            while (elapsed < _introPanDuration)
-            {
-                elapsed += Time.deltaTime;
-                float t = Mathf.SmoothStep(0f, 1f, elapsed / _introPanDuration);
-                Vector2 pos = Vector2.Lerp(startPos, endPos, t);
-                SetCameraXY(pos.x, pos.y);
-                yield return null;
-            }
+            yield return PanCoroutine(startPos, endPos, _introPanDuration);
 
-            SetCameraXY(endPos.x, endPos.y);
             _currentState = CameraState.Idle;
             OnIntroComplete?.Invoke();
         }
@@ -166,13 +157,12 @@ namespace RocketLauncher
             {
                 elapsed += Time.deltaTime;
                 float t = Mathf.SmoothStep(0f, 1f, elapsed / _returnDuration);
-                Vector2 pos = Vector2.Lerp(startPos, endPos, t);
-                SetCameraXY(pos.x, pos.y);
+                SetCameraXY(Vector2.Lerp(startPos, endPos, t));
                 _camera.orthographicSize = Mathf.Lerp(startOrtho, _defaultOrthoSize, t);
                 yield return null;
             }
 
-            SetCameraXY(endPos.x, endPos.y);
+            SetCameraXY(endPos);
             _camera.orthographicSize = _defaultOrthoSize;
             _currentState = CameraState.Idle;
         }
@@ -202,34 +192,13 @@ namespace RocketLauncher
             Vector2 targetPos = _targetTransform != null
                 ? new Vector2(_targetTransform.position.x, _homeY)
                 : startPos;
-
-            float elapsed = 0f;
-            while (elapsed < _lookTargetPanDuration)
-            {
-                elapsed += Time.deltaTime;
-                float t = Mathf.SmoothStep(0f, 1f, elapsed / _lookTargetPanDuration);
-                Vector2 pos = Vector2.Lerp(startPos, targetPos, t);
-                SetCameraXY(pos.x, pos.y);
-                yield return null;
-            }
-            SetCameraXY(targetPos.x, targetPos.y);
-
-            yield return new WaitForSeconds(_lookTargetPauseDuration);
-
             Vector2 vehiclePos = _vehicleTransform != null
                 ? new Vector2(_vehicleTransform.position.x, _homeY)
                 : targetPos;
 
-            elapsed = 0f;
-            while (elapsed < _lookTargetPanDuration)
-            {
-                elapsed += Time.deltaTime;
-                float t = Mathf.SmoothStep(0f, 1f, elapsed / _lookTargetPanDuration);
-                Vector2 pos = Vector2.Lerp(targetPos, vehiclePos, t);
-                SetCameraXY(pos.x, pos.y);
-                yield return null;
-            }
-            SetCameraXY(vehiclePos.x, vehiclePos.y);
+            yield return PanCoroutine(startPos, targetPos, _lookTargetPanDuration);
+            yield return new WaitForSeconds(_lookTargetPauseDuration);
+            yield return PanCoroutine(targetPos, vehiclePos, _lookTargetPanDuration);
 
             _currentState = CameraState.Idle;
             OnLookTargetComplete?.Invoke();
@@ -265,6 +234,22 @@ namespace RocketLauncher
             _shakeMagnitude = magnitude;
             _shakeElapsed = 0f;
         }
+
+        /// <summary>Smooth pan from <paramref name="from"/> to <paramref name="to"/> over <paramref name="duration"/> seconds.</summary>
+        private IEnumerator PanCoroutine(Vector2 from, Vector2 to, float duration)
+        {
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / duration);
+                SetCameraXY(Vector2.Lerp(from, to, t));
+                yield return null;
+            }
+            SetCameraXY(to);
+        }
+
+        private void SetCameraXY(Vector2 pos) => SetCameraXY(pos.x, pos.y);
 
         private void SetCameraXY(float x, float y)
         {
