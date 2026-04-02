@@ -5,6 +5,7 @@ using UnityEngine;
 /// <summary>
 /// Camera state machine: Intro pan (Target → Vehicle), Follow rocket, Landed, Return to vehicle.
 /// Uses LateUpdate for smooth follow after physics. Camera Z always stays at -10.
+/// Includes screen shake on rocket impact.
 /// </summary>
 public class CameraController : MonoBehaviour
 {
@@ -31,10 +32,16 @@ public class CameraController : MonoBehaviour
     [SerializeField] private float _returnThreshold = 0.1f;
 
     public event Action OnIntroComplete;
+    public event Action OnLookTargetComplete;
 
     private CameraState _currentState;
     private float _defaultZ;
     private Vector2 _smoothVelocity;
+
+    // Screen shake state
+    private float _shakeDuration;
+    private float _shakeMagnitude;
+    private float _shakeElapsed;
 
     private void Awake()
     {
@@ -45,7 +52,7 @@ public class CameraController : MonoBehaviour
     {
         // Auto-find references if not assigned
         if (_rocket == null)
-            _rocket = FindFirstObjectByType<Rocket>();
+            _rocket = FindAnyObjectByType<Rocket>();
 
         if (_vehicleTransform == null)
         {
@@ -175,14 +182,86 @@ public class CameraController : MonoBehaviour
         }
     }
 
+    /// <summary>Pan camera to target, wait 2s, pan back to vehicle.</summary>
+    public void PanToTarget()
+    {
+        if (_currentState == CameraState.Following) return;
+        StartCoroutine(PanToTargetCoroutine());
+    }
+
+    private IEnumerator PanToTargetCoroutine()
+    {
+        _currentState = CameraState.Intro; // block other movement
+
+        float panDuration = 1.0f;
+
+        // Pan to target
+        Vector2 startPos = new Vector2(transform.position.x, transform.position.y);
+        Vector2 targetPos = _targetTransform != null
+            ? new Vector2(_targetTransform.position.x, _homeY)
+            : startPos;
+
+        float elapsed = 0f;
+        while (elapsed < panDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.SmoothStep(0f, 1f, elapsed / panDuration);
+            Vector2 pos = Vector2.Lerp(startPos, targetPos, t);
+            SetCameraXY(pos.x, pos.y);
+            yield return null;
+        }
+        SetCameraXY(targetPos.x, targetPos.y);
+
+        // Wait at target
+        yield return new WaitForSeconds(2f);
+
+        // Pan back to vehicle
+        Vector2 vehiclePos = _vehicleTransform != null
+            ? new Vector2(_vehicleTransform.position.x, _homeY)
+            : targetPos;
+
+        elapsed = 0f;
+        while (elapsed < panDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.SmoothStep(0f, 1f, elapsed / panDuration);
+            Vector2 pos = Vector2.Lerp(targetPos, vehiclePos, t);
+            SetCameraXY(pos.x, pos.y);
+            yield return null;
+        }
+        SetCameraXY(vehiclePos.x, vehiclePos.y);
+
+        _currentState = CameraState.Idle;
+        OnLookTargetComplete?.Invoke();
+    }
+
     private void SetState(CameraState newState)
     {
         _currentState = newState;
         _smoothVelocity = Vector2.zero;
     }
 
+    /// <summary>
+    /// Trigger screen shake. Small shake on miss, bigger on hit.
+    /// </summary>
+    public void Shake(float duration, float magnitude)
+    {
+        _shakeDuration = duration;
+        _shakeMagnitude = magnitude;
+        _shakeElapsed = 0f;
+    }
+
     private void SetCameraXY(float x, float y)
     {
-        transform.position = new Vector3(x, y, _defaultZ);
+        Vector2 shakeOffset = Vector2.zero;
+
+        if (_shakeElapsed < _shakeDuration)
+        {
+            _shakeElapsed += Time.deltaTime;
+            float decay = 1f - (_shakeElapsed / _shakeDuration);
+            shakeOffset = UnityEngine.Random.insideUnitCircle * _shakeMagnitude * decay;
+        }
+
+        transform.position = new Vector3(x + shakeOffset.x, y + shakeOffset.y, _defaultZ);
     }
 }

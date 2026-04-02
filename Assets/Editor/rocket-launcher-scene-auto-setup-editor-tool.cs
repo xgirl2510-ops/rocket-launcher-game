@@ -160,6 +160,10 @@ public partial class SceneSetupTool
             if (autoPlayTransform != null)
                 so.FindProperty("_autoPlayButton").objectReferenceValue = autoPlayTransform.GetComponent<UnityEngine.UI.Button>();
 
+            var lookTargetTransform = canvas.transform.Find("LookTargetButton");
+            if (lookTargetTransform != null)
+                so.FindProperty("_lookTargetButton").objectReferenceValue = lookTargetTransform.GetComponent<UnityEngine.UI.Button>();
+
             var angleTextTransform = canvas.transform.Find("AngleText");
             if (angleTextTransform != null)
                 so.FindProperty("_angleText").objectReferenceValue = angleTextTransform.GetComponent<TMPro.TextMeshProUGUI>();
@@ -179,6 +183,10 @@ public partial class SceneSetupTool
             var roundNumberTransform = canvas.transform.Find("RoundNumberText");
             if (roundNumberTransform != null)
                 so.FindProperty("_roundNumberText").objectReferenceValue = roundNumberTransform.GetComponent<TMPro.TextMeshProUGUI>();
+
+            var bestScoreTransform = canvas.transform.Find("BestScoreText");
+            if (bestScoreTransform != null)
+                so.FindProperty("_bestScoreText").objectReferenceValue = bestScoreTransform.GetComponent<TMPro.TextMeshProUGUI>();
         }
 
         // Wire ObstacleSpawner

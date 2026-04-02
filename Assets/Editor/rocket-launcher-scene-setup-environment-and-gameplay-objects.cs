@@ -135,6 +135,9 @@ public partial class SceneSetupTool
         // Attach Rocket.cs runtime script
         go.AddComponent<Rocket>();
 
+        // Attach RocketTrail for engine trail particles
+        go.AddComponent<RocketTrail>();
+
         // Rocket body — tall red rectangle
         CreateSprite("Body", go,
             Vector3.zero, new Vector3(0.3f, 0.8f, 1f),

@@ -42,11 +42,19 @@ public class LaunchController : MonoBehaviour
     [SerializeField] private TextMeshProUGUI _winText;
     [SerializeField] private Button _restartButton;
     [SerializeField] private Button _autoPlayButton;
+    [SerializeField] private Button _lookTargetButton;
     [SerializeField] private TextMeshProUGUI _angleText;
     [SerializeField] private TextMeshProUGUI _forceText;
     [SerializeField] private TextMeshProUGUI _roundShotsText;
     [SerializeField] private TextMeshProUGUI _totalShotsText;
     [SerializeField] private TextMeshProUGUI _roundNumberText;
+    [SerializeField] private TextMeshProUGUI _bestScoreText;
+
+    [Header("Screen Shake")]
+    [SerializeField] private float _missShakeDuration = 0.2f;
+    [SerializeField] private float _missShakeMagnitude = 0.1f;
+    [SerializeField] private float _hitShakeDuration = 0.3f;
+    [SerializeField] private float _hitShakeMagnitude = 0.2f;
 
     private Camera _camera;
     private bool _isDragging;
@@ -56,6 +64,7 @@ public class LaunchController : MonoBehaviour
     private int _roundShots;
     private int _totalShots;
     private int _roundNumber = 1;
+    private int _bestScore;
     private const int MISSES_BEFORE_AUTOPLAY = 5;
 
     private void Awake()
@@ -86,10 +95,15 @@ public class LaunchController : MonoBehaviour
             _autoPlayButton.gameObject.SetActive(false);
             _autoPlayButton.onClick.AddListener(HandleAutoPlay);
         }
+        if (_lookTargetButton != null)
+        {
+            _lookTargetButton.onClick.AddListener(HandleLookTarget);
+        }
         if (_angleText != null) _angleText.gameObject.SetActive(false);
         if (_forceText != null) _forceText.gameObject.SetActive(false);
 
         UpdateStatsUI();
+        UpdateBestScoreUI();
 
         // Wait for intro to finish before enabling input
         DisableInput();
@@ -183,10 +197,21 @@ public class LaunchController : MonoBehaviour
     /// <summary>Rocket hit target — hide rocket, show win (or reset if auto-play demo).</summary>
     private void HandleTargetHit()
     {
+        // Screen shake on hit (bigger)
+        if (_cameraController != null)
+            _cameraController.Shake(_hitShakeDuration, _hitShakeMagnitude);
+
         if (_isAutoPlaying)
         {
             Invoke(nameof(ReloadAfterAutoPlay), _reloadDelay);
             return;
+        }
+
+        // Update best score
+        if (_bestScore == 0 || _roundShots < _bestScore)
+        {
+            _bestScore = _roundShots;
+            UpdateBestScoreUI();
         }
 
         _rocket.gameObject.SetActive(false);
@@ -200,6 +225,10 @@ public class LaunchController : MonoBehaviour
     /// <summary>Rocket hit ground — count miss (or reset if auto-play demo).</summary>
     private void HandleRocketMiss()
     {
+        // Screen shake on miss (small)
+        if (_cameraController != null)
+            _cameraController.Shake(_missShakeDuration, _missShakeMagnitude);
+
         if (_isAutoPlaying)
         {
             Invoke(nameof(ReloadAfterAutoPlay), _reloadDelay);
@@ -238,7 +267,8 @@ public class LaunchController : MonoBehaviour
         if (_restartButton != null)
             _restartButton.gameObject.SetActive(false);
 
-        // Re-enable rocket, reset counters
+        // Re-enable rocket, clear debris from previous round, reset counters
+        RocketDebris.ClearAll();
         _rocket.gameObject.SetActive(true);
         _rocket.ResetToPosition(_spawnPoint.position);
         _missCount = 0;
@@ -321,6 +351,25 @@ public class LaunchController : MonoBehaviour
         EnableInput();
     }
 
+    /// <summary>Look Target button — pan camera to target, wait 2s, pan back.</summary>
+    private void HandleLookTarget()
+    {
+        if (!_inputEnabled) return;
+        if (_rocket != null && _rocket.IsFlying) return;
+        if (_cameraController == null) return;
+
+        DisableInput();
+        _cameraController.OnLookTargetComplete -= OnLookTargetDone;
+        _cameraController.OnLookTargetComplete += OnLookTargetDone;
+        _cameraController.PanToTarget();
+    }
+
+    private void OnLookTargetDone()
+    {
+        _cameraController.OnLookTargetComplete -= OnLookTargetDone;
+        EnableInput();
+    }
+
     private void RotateRocketToDirection(Vector2 direction)
     {
         float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90f;
@@ -344,6 +393,12 @@ public class LaunchController : MonoBehaviour
         if (_roundShotsText != null) _roundShotsText.text = $"Bắn: {_roundShots}";
         if (_totalShotsText != null) _totalShotsText.text = $"Tổng: {_totalShots}";
         if (_roundNumberText != null) _roundNumberText.text = $"Ván: {_roundNumber}";
+    }
+
+    private void UpdateBestScoreUI()
+    {
+        if (_bestScoreText != null)
+            _bestScoreText.text = _bestScore > 0 ? $"Kỷ lục: {_bestScore}" : "Kỷ lục: --";
     }
 
     public void EnableInput()

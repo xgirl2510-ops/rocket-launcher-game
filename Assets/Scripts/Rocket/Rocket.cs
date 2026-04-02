@@ -4,6 +4,7 @@ using UnityEngine;
 /// <summary>
 /// Rocket physics: launch with impulse, rotate to face velocity, detect ground/target collision.
 /// Starts Kinematic, becomes Dynamic on Launch(). Events notify GameManager and CameraController.
+/// Integrates with RocketTrail (trail particles) and ExplosionEffect (impact burst).
 /// </summary>
 public class Rocket : MonoBehaviour
 {
@@ -18,10 +19,15 @@ public class Rocket : MonoBehaviour
 
     private Rigidbody2D _rb;
     private bool _isFlying;
+    private RocketTrail _trail;
+
+    /// <summary>Whether the rocket is currently in flight.</summary>
+    public bool IsFlying => _isFlying;
 
     private void Awake()
     {
         _rb = GetComponent<Rigidbody2D>();
+        _trail = GetComponent<RocketTrail>();
     }
 
     /// <summary>
@@ -36,6 +42,9 @@ public class Rocket : MonoBehaviour
         _rb.bodyType = RigidbodyType2D.Dynamic;
         _rb.AddForce(direction * force, ForceMode2D.Impulse);
         _isFlying = true;
+
+        if (_trail != null) _trail.StartTrail();
+
         OnRocketLaunched?.Invoke();
     }
 
@@ -50,6 +59,16 @@ public class Rocket : MonoBehaviour
         _rb.angularVelocity = 0f;
         transform.position = new Vector3(position.x, position.y, transform.position.z);
         transform.rotation = Quaternion.identity;
+
+        if (_trail != null) _trail.ClearTrail();
+        SetSpritesVisible(true);
+    }
+
+    /// <summary>Show/hide all child SpriteRenderers (for shatter effect).</summary>
+    private void SetSpritesVisible(bool visible)
+    {
+        foreach (var sr in GetComponentsInChildren<SpriteRenderer>())
+            sr.enabled = visible;
     }
 
     private void FixedUpdate()
@@ -79,6 +98,12 @@ public class Rocket : MonoBehaviour
         _isFlying = false;
         _rb.linearVelocity = Vector2.zero;
         _rb.angularVelocity = 0f;
+
+        if (_trail != null) _trail.StopTrail();
+        ExplosionEffect.Spawn(transform.position, false);
+        RocketDebris.Spawn(transform.position);
+        SetSpritesVisible(false);
+
         OnRocketLanded?.Invoke();
     }
 
@@ -90,6 +115,12 @@ public class Rocket : MonoBehaviour
         _isFlying = false;
         _rb.linearVelocity = Vector2.zero;
         _rb.angularVelocity = 0f;
+
+        if (_trail != null) _trail.StopTrail();
+        ExplosionEffect.Spawn(transform.position, true);
+        RocketDebris.Spawn(transform.position);
+        SetSpritesVisible(false);
+
         OnTargetHit?.Invoke();
     }
 }

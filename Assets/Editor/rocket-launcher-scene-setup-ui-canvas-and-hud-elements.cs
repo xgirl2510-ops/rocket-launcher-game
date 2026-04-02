@@ -29,14 +29,17 @@ public partial class SceneSetupTool
         CreateRestartButton(canvasGO);
         CreateAutoPlayButton(canvasGO);
 
+        CreateLookTargetButton(canvasGO);
+
         // Hint labels (bottom-left, inactive until 5 misses)
         CreateHintLabel(canvasGO, "AngleText", "Góc: 0°",  new Vector2(30, 80), false);
         CreateHintLabel(canvasGO, "ForceText", "Lực: 0",   new Vector2(30, 30), false);
 
         // Stats labels (top-right, always visible)
-        CreateHintLabel(canvasGO, "RoundShotsText", "Bắn: 0",  new Vector2(-30, -30),  true, TextAlignmentOptions.Right);
-        CreateHintLabel(canvasGO, "TotalShotsText", "Tổng: 0", new Vector2(-30, -75),  true, TextAlignmentOptions.Right);
-        CreateHintLabel(canvasGO, "RoundNumberText","Ván: 1",   new Vector2(-30, -120), true, TextAlignmentOptions.Right);
+        CreateHintLabel(canvasGO, "RoundShotsText",  "Bắn: 0",      new Vector2(-30, -30),  true, TextAlignmentOptions.Right);
+        CreateHintLabel(canvasGO, "TotalShotsText",  "Tổng: 0",     new Vector2(-30, -75),  true, TextAlignmentOptions.Right);
+        CreateHintLabel(canvasGO, "RoundNumberText", "Ván: 1",      new Vector2(-30, -120), true, TextAlignmentOptions.Right);
+        CreateHintLabel(canvasGO, "BestScoreText",   "Kỷ lục: --",  new Vector2(-30, -165), true, TextAlignmentOptions.Right);
     }
 
     /// <summary>Creates a HUD label. Anchored bottom-left (hints) or top-right (stats).</summary>
@@ -99,6 +102,37 @@ public partial class SceneSetupTool
         var tmp = textGO.AddComponent<TextMeshProUGUI>();
         tmp.text      = "MÁY CHƠI";
         tmp.fontSize  = 32;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.color     = Color.white;
+    }
+
+    /// <summary>Creates the Look Target button (top-left, always visible).</summary>
+    private static void CreateLookTargetButton(GameObject parent)
+    {
+        var go = CreateUIElement("LookTargetButton", parent);
+
+        var rect = (RectTransform)go.transform;
+        rect.anchorMin        = new Vector2(0f, 1f); // top-left
+        rect.anchorMax        = new Vector2(0f, 1f);
+        rect.pivot            = new Vector2(0f, 1f);
+        rect.anchoredPosition = new Vector2(30, -30);
+        rect.sizeDelta        = new Vector2(250, 70);
+
+        var img = go.AddComponent<Image>();
+        ColorUtility.TryParseHtmlString("#2C3E50", out Color bgColor);
+        img.color = bgColor;
+        go.AddComponent<Button>();
+
+        var textGO   = CreateUIElement("Text", go);
+        var textRect = (RectTransform)textGO.transform;
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+
+        var tmp = textGO.AddComponent<TextMeshProUGUI>();
+        tmp.text      = "XEM MỤC TIÊU";
+        tmp.fontSize  = 30;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color     = Color.white;
     }
