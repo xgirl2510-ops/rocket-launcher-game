@@ -9,7 +9,7 @@ using UnityEngine;
 /// </summary>
 public class CameraController : MonoBehaviour
 {
-    public enum CameraState { Intro, Idle, Following, Landed, Returning }
+    public enum CameraState { Intro, Idle, Following, Landed, Returning, LookingAtTarget }
 
     [Header("References")]
     [SerializeField] private Rocket _rocket;
@@ -21,14 +21,23 @@ public class CameraController : MonoBehaviour
     [SerializeField] private float _introPanDuration = 1.5f;
 
     [Header("Camera Home")]
-    [SerializeField] private float _homeY = 2f;  // Must match CamY in scene setup
+    [SerializeField] private float _homeY = 2f;
 
     [Header("Follow")]
     [SerializeField] private float _followSmoothTime = 0.12f;
     [SerializeField] private float _followOffsetY = 2f;
 
+    [Header("Dynamic Zoom")]
+    [SerializeField] private float _maxOrthoSize = 25f;
+    [SerializeField] private float _zoomOutSpeed = 5f;
+    [SerializeField] private float _zoomMaxDistance = 40f;
+
     [Header("Return")]
     [SerializeField] private float _returnDuration = 1.0f;
+
+    [Header("Look Target")]
+    [SerializeField] private float _lookTargetPanDuration = 1.0f;
+    [SerializeField] private float _lookTargetPauseDuration = 2f;
 
     public event Action OnIntroComplete;
     public event Action OnLookTargetComplete;
@@ -36,6 +45,8 @@ public class CameraController : MonoBehaviour
     private CameraState _currentState;
     private float _defaultZ;
     private Vector2 _smoothVelocity;
+    private Camera _camera;
+    private float _defaultOrthoSize;
 
     // Screen shake state
     private float _shakeDuration;
@@ -45,35 +56,23 @@ public class CameraController : MonoBehaviour
     private void Awake()
     {
         _defaultZ = transform.position.z;
+        _camera = GetComponent<Camera>();
+        _defaultOrthoSize = _camera.orthographicSize;
     }
 
     private void Start()
     {
-        // Auto-find references if not assigned
-        if (_rocket == null)
-            _rocket = FindAnyObjectByType<Rocket>();
-
-        if (_vehicleTransform == null)
+        if (_rocket == null || _vehicleTransform == null || _targetTransform == null)
         {
-            var vehicle = GameObject.Find("LauncherVehicle");
-            if (vehicle != null) _vehicleTransform = vehicle.transform;
+            Debug.LogError("[CameraController] Missing references — wire via editor tool (Tools > Rocket Launcher > Setup Scene).");
+            enabled = false;
+            return;
         }
 
-        if (_targetTransform == null)
-        {
-            var target = GameObject.Find("Target");
-            if (target != null) _targetTransform = target.transform;
-        }
+        _rocket.OnRocketLaunched += HandleRocketLaunched;
+        _rocket.OnRocketLanded += HandleRocketLanded;
+        _rocket.OnTargetHit += HandleRocketHitTarget;
 
-        // Subscribe to rocket events
-        if (_rocket != null)
-        {
-            _rocket.OnRocketLaunched += HandleRocketLaunched;
-            _rocket.OnRocketLanded += HandleRocketLanded;
-            _rocket.OnTargetHit += HandleRocketHitTarget;
-        }
-
-        // Start intro pan
         PlayIntro();
     }
 
@@ -86,16 +85,14 @@ public class CameraController : MonoBehaviour
 
     private IEnumerator IntroCoroutine()
     {
-        // Snap camera to Target — use target X but fixed camera Y
-        if (_targetTransform != null)
-        {
-            SetCameraXY(_targetTransform.position.x, _homeY);
-        }
+        // Ensure default zoom at start of intro
+        _camera.orthographicSize = _defaultOrthoSize;
 
-        // Pause at Target
+        if (_targetTransform != null)
+            SetCameraXY(_targetTransform.position.x, _homeY);
+
         yield return new WaitForSeconds(_introPauseDuration);
 
-        // Pan from Target to Vehicle — camera Y stays at _homeY
         Vector2 startPos = new Vector2(transform.position.x, transform.position.y);
         Vector2 endPos = _vehicleTransform != null
             ? new Vector2(_vehicleTransform.position.x, _homeY)
@@ -111,38 +108,15 @@ public class CameraController : MonoBehaviour
             yield return null;
         }
 
-        // Ensure exact final position
         SetCameraXY(endPos.x, endPos.y);
-
         _currentState = CameraState.Idle;
         OnIntroComplete?.Invoke();
-        Debug.Log("[CameraController] Intro complete — camera at vehicle.");
     }
 
     private void LateUpdate()
     {
-        switch (_currentState)
-        {
-            case CameraState.Intro:
-                // Handled by coroutine
-                break;
-
-            case CameraState.Idle:
-                // Camera stays at vehicle
-                break;
-
-            case CameraState.Following:
-                FollowRocket();
-                break;
-
-            case CameraState.Landed:
-                // Camera stays where rocket landed
-                break;
-
-            case CameraState.Returning:
-                // Handled by coroutine
-                break;
-        }
+        if (_currentState == CameraState.Following)
+            FollowRocket();
     }
 
     private void FollowRocket()
@@ -156,6 +130,13 @@ public class CameraController : MonoBehaviour
         Vector2 current = new Vector2(transform.position.x, transform.position.y);
         Vector2 smoothed = Vector2.SmoothDamp(current, target, ref _smoothVelocity, _followSmoothTime);
         SetCameraXY(smoothed.x, smoothed.y);
+
+        // Dynamic zoom: zoom out as rocket flies further from vehicle
+        float dist = Vector2.Distance(_rocket.transform.position, _vehicleTransform.position);
+        float zoomT = Mathf.Clamp01(dist / _zoomMaxDistance);
+        float targetOrtho = Mathf.Lerp(_defaultOrthoSize, _maxOrthoSize, zoomT);
+        _camera.orthographicSize = Mathf.MoveTowards(
+            _camera.orthographicSize, targetOrtho, _zoomOutSpeed * Time.deltaTime);
     }
 
     /// <summary>Called after rocket lands to smoothly pan back to vehicle.</summary>
@@ -173,6 +154,7 @@ public class CameraController : MonoBehaviour
         Vector2 endPos = _vehicleTransform != null
             ? new Vector2(_vehicleTransform.position.x, _homeY)
             : startPos;
+        float startOrtho = _camera.orthographicSize;
 
         float elapsed = 0f;
         while (elapsed < _returnDuration)
@@ -181,14 +163,16 @@ public class CameraController : MonoBehaviour
             float t = Mathf.SmoothStep(0f, 1f, elapsed / _returnDuration);
             Vector2 pos = Vector2.Lerp(startPos, endPos, t);
             SetCameraXY(pos.x, pos.y);
+            _camera.orthographicSize = Mathf.Lerp(startOrtho, _defaultOrthoSize, t);
             yield return null;
         }
 
         SetCameraXY(endPos.x, endPos.y);
+        _camera.orthographicSize = _defaultOrthoSize;
         _currentState = CameraState.Idle;
     }
 
-    /// <summary>Pan camera to target, wait 2s, pan back to vehicle.</summary>
+    /// <summary>Pan camera to target, pause, pan back to vehicle.</summary>
     public void PanToTarget()
     {
         if (_currentState == CameraState.Following) return;
@@ -197,9 +181,7 @@ public class CameraController : MonoBehaviour
 
     private IEnumerator PanToTargetCoroutine()
     {
-        _currentState = CameraState.Intro; // block other movement
-
-        float panDuration = 1.0f;
+        _currentState = CameraState.LookingAtTarget;
 
         // Pan to target
         Vector2 startPos = new Vector2(transform.position.x, transform.position.y);
@@ -208,18 +190,17 @@ public class CameraController : MonoBehaviour
             : startPos;
 
         float elapsed = 0f;
-        while (elapsed < panDuration)
+        while (elapsed < _lookTargetPanDuration)
         {
             elapsed += Time.deltaTime;
-            float t = Mathf.SmoothStep(0f, 1f, elapsed / panDuration);
+            float t = Mathf.SmoothStep(0f, 1f, elapsed / _lookTargetPanDuration);
             Vector2 pos = Vector2.Lerp(startPos, targetPos, t);
             SetCameraXY(pos.x, pos.y);
             yield return null;
         }
         SetCameraXY(targetPos.x, targetPos.y);
 
-        // Wait at target
-        yield return new WaitForSeconds(2f);
+        yield return new WaitForSeconds(_lookTargetPauseDuration);
 
         // Pan back to vehicle
         Vector2 vehiclePos = _vehicleTransform != null
@@ -227,10 +208,10 @@ public class CameraController : MonoBehaviour
             : targetPos;
 
         elapsed = 0f;
-        while (elapsed < panDuration)
+        while (elapsed < _lookTargetPanDuration)
         {
             elapsed += Time.deltaTime;
-            float t = Mathf.SmoothStep(0f, 1f, elapsed / panDuration);
+            float t = Mathf.SmoothStep(0f, 1f, elapsed / _lookTargetPanDuration);
             Vector2 pos = Vector2.Lerp(targetPos, vehiclePos, t);
             SetCameraXY(pos.x, pos.y);
             yield return null;
@@ -261,9 +242,7 @@ public class CameraController : MonoBehaviour
         _smoothVelocity = Vector2.zero;
     }
 
-    /// <summary>
-    /// Trigger screen shake. Small shake on miss, bigger on hit.
-    /// </summary>
+    /// <summary>Trigger screen shake. Small shake on miss, bigger on hit.</summary>
     public void Shake(float duration, float magnitude)
     {
         _shakeDuration = duration;

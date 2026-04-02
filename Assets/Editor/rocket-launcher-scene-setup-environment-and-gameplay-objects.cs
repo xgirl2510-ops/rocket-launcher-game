@@ -61,7 +61,7 @@ public partial class SceneSetupTool
         var ground = CreateSprite("Ground", parent,
             new Vector3(GroundCenterX, GroundCenterY, 0f), new Vector3(GroundWidth, GroundSpriteHeight, 1f),
             Hex("#8B6914"), "Environment");
-        ground.tag = "Ground";
+        ground.tag = GameConstants.TagGround;
         ground.AddComponent<BoxCollider2D>();
 
         // Target — red square, 4 screen-widths right (camera follows rocket to it)
@@ -69,7 +69,7 @@ public partial class SceneSetupTool
         var target = CreateSprite("Target", parent,
             new Vector3(TargetX, TargetY, 0f), new Vector3(1.5f, TargetScaleY, 1f),
             Hex("#FF0000"), "Gameplay");
-        target.tag = "Target";
+        target.tag = GameConstants.TagTarget;
         target.AddComponent<BoxCollider2D>().isTrigger = true;
     }
 

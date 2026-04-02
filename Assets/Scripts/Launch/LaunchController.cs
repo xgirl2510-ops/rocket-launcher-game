@@ -1,14 +1,14 @@
+using System.Collections;
 using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
 
 /// <summary>
 /// Slingshot input: touch/click on vehicle → drag to aim → release to launch rocket.
 /// Direction = opposite of drag. Force = mapped from drag distance.
 /// Auto-reloads rocket after miss. Shows win UI + restart on hit.
 /// Randomizes target position each round.
+/// UI management split into partial class: launch-controller-hud-management.cs
 /// </summary>
-public class LaunchController : MonoBehaviour
+public partial class LaunchController : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private Rocket _rocket;
@@ -38,21 +38,6 @@ public class LaunchController : MonoBehaviour
     [SerializeField] private float _targetMinY = -4f;
     [SerializeField] private float _targetMaxY = 10f;
 
-    [Header("UI")]
-    [SerializeField] private TextMeshProUGUI _winText;
-    [SerializeField] private Button _restartButton;
-    [SerializeField] private Button _autoPlayButton;
-    [SerializeField] private Button _lookTargetButton;
-    [SerializeField] private TextMeshProUGUI _angleText;
-    [SerializeField] private TextMeshProUGUI _forceText;
-    [SerializeField] private TextMeshProUGUI _statsText;
-
-    [Header("Screen Shake")]
-    [SerializeField] private float _missShakeDuration = 0.2f;
-    [SerializeField] private float _missShakeMagnitude = 0.1f;
-    [SerializeField] private float _hitShakeDuration = 0.3f;
-    [SerializeField] private float _hitShakeMagnitude = 0.2f;
-
     private Camera _camera;
     private bool _isDragging;
     private bool _inputEnabled = true;
@@ -60,12 +45,11 @@ public class LaunchController : MonoBehaviour
     private int _missCount;
     private bool _isAutoPlaying;
     private readonly GameRoundTracker _roundTracker = new GameRoundTracker();
-    private const int MISSES_BEFORE_AUTOPLAY = 5;
+    private const int MissesBeforeHints = 5;
 
     private void Awake()
     {
         _camera = Camera.main;
-        // Randomize target in Awake so CameraController.Start() sees correct position
         RandomizeTarget();
     }
 
@@ -77,39 +61,13 @@ public class LaunchController : MonoBehaviour
             _rocket.OnTargetHit += HandleTargetHit;
         }
 
-        // Hide UI at start
-        if (_winText != null)
-            _winText.gameObject.SetActive(false);
-        if (_restartButton != null)
-        {
-            _restartButton.gameObject.SetActive(false);
-            _restartButton.onClick.AddListener(HandleRestart);
-        }
-        if (_autoPlayButton != null)
-        {
-            _autoPlayButton.gameObject.SetActive(false);
-            _autoPlayButton.onClick.AddListener(HandleAutoPlay);
-        }
-        if (_lookTargetButton != null)
-        {
-            _lookTargetButton.onClick.AddListener(HandleLookTarget);
-        }
-        if (_angleText != null) _angleText.gameObject.SetActive(false);
-        if (_forceText != null) _forceText.gameObject.SetActive(false);
-
-        UpdateStatsUI();
-
-        // Wait for intro to finish before enabling input
+        InitHUD();
         DisableInput();
 
         if (_cameraController != null)
-        {
             _cameraController.OnIntroComplete += OnIntroDone;
-        }
         else
-        {
             EnableInput();
-        }
     }
 
     private void Update()
@@ -153,7 +111,6 @@ public class LaunchController : MonoBehaviour
             _stretchPlayed = true;
         }
 
-        // Update hint texts if visible
         UpdateHintTexts(launchDirection, normalizedForce);
     }
 
@@ -217,26 +174,20 @@ public class LaunchController : MonoBehaviour
             AudioManager.Instance.PlayWin();
         }
 
-        // Screen shake on hit (bigger)
         if (_cameraController != null)
             _cameraController.Shake(_hitShakeDuration, _hitShakeMagnitude);
 
         if (_isAutoPlaying)
         {
-            Invoke(nameof(ReloadAfterAutoPlay), _reloadDelay);
+            StartCoroutine(DelayedAction(_reloadDelay, ReloadAfterAutoPlay));
             return;
         }
 
-        // Update best score
         if (_roundTracker.TryUpdateBest(_roundTracker.RoundShots))
             UpdateStatsUI();
 
         _rocket.gameObject.SetActive(false);
-
-        if (_winText != null)
-            _winText.gameObject.SetActive(true);
-        if (_restartButton != null)
-            _restartButton.gameObject.SetActive(true);
+        ShowWinUI();
     }
 
     /// <summary>Rocket hit ground — count miss (or reset if auto-play demo).</summary>
@@ -248,21 +199,20 @@ public class LaunchController : MonoBehaviour
             AudioManager.Instance.PlayHitGround();
         }
 
-        // Screen shake on miss (small)
         if (_cameraController != null)
             _cameraController.Shake(_missShakeDuration, _missShakeMagnitude);
 
         if (_isAutoPlaying)
         {
-            Invoke(nameof(ReloadAfterAutoPlay), _reloadDelay);
+            StartCoroutine(DelayedAction(_reloadDelay, ReloadAfterAutoPlay));
             return;
         }
 
         _missCount++;
-        Invoke(nameof(ReloadRocket), _reloadDelay);
+        StartCoroutine(DelayedAction(_reloadDelay, ReloadRocket));
     }
 
-    /// <summary>Return camera, reset rocket, show autoplay if enough misses.</summary>
+    /// <summary>Return camera, reset rocket, show hints if enough misses.</summary>
     private void ReloadRocket()
     {
         if (_cameraController != null)
@@ -270,13 +220,8 @@ public class LaunchController : MonoBehaviour
 
         _rocket.ResetToPosition(_spawnPoint.position);
 
-        // Show hints after N misses
-        if (_missCount >= MISSES_BEFORE_AUTOPLAY)
-        {
-            if (_autoPlayButton != null) _autoPlayButton.gameObject.SetActive(true);
-            if (_angleText != null) _angleText.gameObject.SetActive(true);
-            if (_forceText != null) _forceText.gameObject.SetActive(true);
-        }
+        if (_missCount >= MissesBeforeHints)
+            ShowHints();
 
         EnableInput();
     }
@@ -284,34 +229,26 @@ public class LaunchController : MonoBehaviour
     /// <summary>Restart button clicked — randomize target, intro pan, then enable input.</summary>
     private void HandleRestart()
     {
-        CancelInvoke();
+        StopAllCoroutines();
 
         if (AudioManager.Instance != null)
             AudioManager.Instance.PlayClick();
 
-        // Hide UI
-        if (_winText != null)
-            _winText.gameObject.SetActive(false);
-        if (_restartButton != null)
-            _restartButton.gameObject.SetActive(false);
+        HideWinUI();
+        HideHints();
 
-        // Re-enable rocket, clear debris from previous round, reset counters
         RocketDebris.ClearAll();
+        GroundScorch.ClearAll();
         _rocket.gameObject.SetActive(true);
         _rocket.ResetToPosition(_spawnPoint.position);
+        if (_targetTransform != null) _targetTransform.gameObject.SetActive(true);
         _missCount = 0;
-        if (_autoPlayButton != null)
-            _autoPlayButton.gameObject.SetActive(false);
-        if (_angleText != null) _angleText.gameObject.SetActive(false);
-        if (_forceText != null) _forceText.gameObject.SetActive(false);
 
         _roundTracker.NewRound();
         UpdateStatsUI();
 
-        // Randomize target BEFORE intro so camera shows new position
         RandomizeTarget();
 
-        // Intro pan: camera shows target → pans back to vehicle → enable input
         if (_cameraController != null)
         {
             _cameraController.OnIntroComplete -= OnIntroDone;
@@ -324,14 +261,12 @@ public class LaunchController : MonoBehaviour
         }
     }
 
-    /// <summary>Called when intro pan finishes — re-enable input.</summary>
     private void OnIntroDone()
     {
         _cameraController.OnIntroComplete -= OnIntroDone;
         EnableInput();
     }
 
-    /// <summary>Move target to random X and Y position.</summary>
     private void RandomizeTarget()
     {
         if (_targetTransform == null) return;
@@ -340,17 +275,16 @@ public class LaunchController : MonoBehaviour
         float y = Random.Range(_targetMinY, _targetMaxY);
         _targetTransform.position = new Vector3(x, y, _targetTransform.position.z);
 
-        // Respawn obstacles with safe trajectory to new target
         if (_obstacleSpawner != null)
             _obstacleSpawner.RespawnObstacles();
     }
 
-    /// <summary>Auto-play: launch along safe trajectory, then reset for player to retry same layout.</summary>
+    /// <summary>Auto-play: launch along safe trajectory, then reset for player to retry.</summary>
     private void HandleAutoPlay()
     {
         if (!_inputEnabled || _obstacleSpawner == null) return;
 
-        CancelInvoke();
+        StopAllCoroutines();
 
         if (AudioManager.Instance != null)
             AudioManager.Instance.PlayClick();
@@ -359,9 +293,7 @@ public class LaunchController : MonoBehaviour
         float force = _obstacleSpawner.SafeLaunchForce;
         if (dir.sqrMagnitude < 0.01f) return;
 
-        // Hide autoplay button during demo
-        if (_autoPlayButton != null)
-            _autoPlayButton.gameObject.SetActive(false);
+        HideAutoPlayButton();
 
         _isAutoPlaying = true;
         RotateRocketToDirection(dir);
@@ -374,7 +306,6 @@ public class LaunchController : MonoBehaviour
         DisableInput();
     }
 
-    /// <summary>After auto-play demo, reset rocket for player to try same layout.</summary>
     private void ReloadAfterAutoPlay()
     {
         _isAutoPlaying = false;
@@ -384,11 +315,12 @@ public class LaunchController : MonoBehaviour
 
         _rocket.gameObject.SetActive(true);
         _rocket.ResetToPosition(_spawnPoint.position);
-        _missCount = 0; // Reset miss count
+        if (_targetTransform != null) _targetTransform.gameObject.SetActive(true);
+        _missCount = 0;
         EnableInput();
     }
 
-    /// <summary>Look Target button — pan camera to target, wait 2s, pan back.</summary>
+    /// <summary>Look Target button — pan camera to target, wait, pan back.</summary>
     private void HandleLookTarget()
     {
         if (!_inputEnabled) return;
@@ -413,27 +345,9 @@ public class LaunchController : MonoBehaviour
         _rocket.transform.rotation = Quaternion.Euler(0f, 0f, angle);
     }
 
-    private void UpdateHintTexts(Vector2 direction, float normalizedForce)
-    {
-        if (_angleText == null || _forceText == null) return;
-        if (!_angleText.gameObject.activeSelf) return;
-
-        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-        float force = Mathf.Lerp(_minLaunchForce, _maxLaunchForce, normalizedForce);
-
-        _angleText.text = $"Angle: {angle:F1}°";
-        _forceText.text = $"Force: {force:F1}";
-    }
-
-    private void UpdateStatsUI()
-    {
-        if (_statsText == null) return;
-        _statsText.text = _roundTracker.GetStatsText();
-    }
-
     private void OnDestroy()
     {
-        CancelInvoke();
+        StopAllCoroutines();
 
         if (_rocket != null)
         {
@@ -447,12 +361,14 @@ public class LaunchController : MonoBehaviour
             _cameraController.OnLookTargetComplete -= OnLookTargetDone;
         }
 
-        if (_restartButton != null)
-            _restartButton.onClick.RemoveListener(HandleRestart);
-        if (_autoPlayButton != null)
-            _autoPlayButton.onClick.RemoveListener(HandleAutoPlay);
-        if (_lookTargetButton != null)
-            _lookTargetButton.onClick.RemoveListener(HandleLookTarget);
+        CleanupHUD();
+    }
+
+    /// <summary>Generic delayed action coroutine — replaces Invoke(nameof(...), delay).</summary>
+    private IEnumerator DelayedAction(float delay, System.Action action)
+    {
+        yield return new WaitForSeconds(delay);
+        action();
     }
 
     public void EnableInput()

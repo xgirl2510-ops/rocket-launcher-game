@@ -98,7 +98,7 @@ public static class ProceduralAudioClipGenerator
         return clip;
     }
 
-    /// <summary>3 ascending sine tones — win jingle.</summary>
+    /// <summary>4 ascending sine tones (C5-E5-G5-C6) — win jingle.</summary>
     public static AudioClip CreateWinJingle()
     {
         float duration = 0.8f;

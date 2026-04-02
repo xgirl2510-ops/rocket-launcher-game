@@ -25,39 +25,7 @@ public partial class SceneSetupTool
         Undo.IncrementCurrentGroup();
         Undo.SetCurrentGroupName("Setup Rocket Launcher Scene");
 
-        // Pre-generate sprites BEFORE any scene work — avoids AssetDatabase conflicts
-        PreGenerateSprites();
-
-        ClearScene();
-        SetupTags();
-        SetupSortingLayers();
-        SetupLayer(6, "Rocket");
-
-        SetupCamera();
-
-        // Section separators — establish hierarchy order in Scene view
-        var managers  = CreateEmpty("--- MANAGERS ---");
-        var envParent = CreateEmpty("--- ENVIRONMENT ---");
-        var gameplay  = CreateEmpty("--- GAMEPLAY ---");
-        var inputSep  = CreateEmpty("--- INPUT ---");
-        var uiSep     = CreateEmpty("--- UI ---");
-
-        CreateEmpty("GameManager", managers);
-        SetupAudio(managers);
-        CreateEnvironment(envParent);
-        CreateGameplay(gameplay);
-        CreateCanvas(uiSep);
-
-        // Wire LaunchController with references
-        WireLaunchController(inputSep);
-
-        // Wire CameraController with references (must happen after gameplay objects exist)
-        WireCameraController();
-
-        // Add EventSystem for button input
-        var eventSystem = CreateEmpty("EventSystem");
-        eventSystem.AddComponent<UnityEngine.EventSystems.EventSystem>();
-        eventSystem.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+        RunCoreSetup();
 
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
         Debug.Log("[SceneSetupTool] Scene setup complete. Press Ctrl+S to save.");
@@ -75,13 +43,26 @@ public partial class SceneSetupTool
             importMethod?.Invoke(null, null);
         }
 
-        // Pre-generate sprites BEFORE any scene work — avoids AssetDatabase conflicts
+        RunCoreSetup();
+
+        // Save scene as GameScene
+        var scene = SceneManager.GetActiveScene();
+        string scenePath = "Assets/Scenes/GameScene.unity";
+        System.IO.Directory.CreateDirectory("Assets/Scenes");
+        EditorSceneManager.SaveScene(scene, scenePath);
+        Debug.Log("[SceneSetupTool] Batch setup complete. Scene saved to " + scenePath);
+    }
+
+    /// <summary>Shared scene setup: sprites, camera, environment, gameplay, UI, wiring.</summary>
+    private static void RunCoreSetup()
+    {
         PreGenerateSprites();
 
         ClearScene();
         SetupTags();
         SetupSortingLayers();
         SetupLayer(6, "Rocket");
+
         SetupCamera();
 
         var managers  = CreateEmpty("--- MANAGERS ---");
@@ -101,13 +82,6 @@ public partial class SceneSetupTool
         var eventSystem = CreateEmpty("EventSystem");
         eventSystem.AddComponent<UnityEngine.EventSystems.EventSystem>();
         eventSystem.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
-
-        // Save scene as GameScene
-        var scene = SceneManager.GetActiveScene();
-        string scenePath = "Assets/Scenes/GameScene.unity";
-        System.IO.Directory.CreateDirectory("Assets/Scenes");
-        EditorSceneManager.SaveScene(scene, scenePath);
-        Debug.Log("[SceneSetupTool] Batch setup complete. Scene saved to " + scenePath);
     }
 
     // ── Audio ─────────────────────────────────────────────────────────────────
@@ -139,16 +113,13 @@ public partial class SceneSetupTool
         var go = CreateEmpty("LaunchController", parent);
         var lc = go.AddComponent<LaunchController>();
 
-        // Add ObstacleSpawner on same GO
         var os = go.AddComponent<ObstacleSpawner>();
 
-        // Find scene references
         var rocket = GameObject.Find("Rocket");
         var aimArrow = GameObject.Find("AimArrow");
         var vehicle = GameObject.Find("LauncherVehicle");
         var spawnPoint = vehicle?.transform.Find("RocketSpawnPoint");
 
-        // Wire via SerializedObject to set private [SerializeField] fields
         var so = new SerializedObject(lc);
         if (rocket != null)
             so.FindProperty("_rocket").objectReferenceValue = rocket.GetComponent<Rocket>();
@@ -163,7 +134,6 @@ public partial class SceneSetupTool
         if (camGo != null)
             so.FindProperty("_cameraController").objectReferenceValue = camGo.GetComponent<CameraController>();
 
-        // Wire Target reference
         var target = GameObject.Find("Target");
         if (target != null)
             so.FindProperty("_targetTransform").objectReferenceValue = target.transform;
@@ -201,7 +171,6 @@ public partial class SceneSetupTool
                 so.FindProperty("_statsText").objectReferenceValue = statsTransform.GetComponent<TMPro.TextMeshProUGUI>();
         }
 
-        // Wire ObstacleSpawner
         so.FindProperty("_obstacleSpawner").objectReferenceValue = os;
         so.ApplyModifiedProperties();
 
@@ -252,9 +221,8 @@ public partial class SceneSetupTool
 
     private static void SetupTags()
     {
-        EnsureTag("Ground");
-        EnsureTag("Target");
-        // "Player" tag exists in Unity by default
+        EnsureTag(GameConstants.TagGround);
+        EnsureTag(GameConstants.TagTarget);
     }
 
     private static void EnsureTag(string tagName)
@@ -270,7 +238,6 @@ public partial class SceneSetupTool
 
     private static void SetupSortingLayers()
     {
-        // Default layer always exists; append: Background, Environment, Gameplay, Projectile
         var tm     = GetTagManager();
         var layers = tm.FindProperty("m_SortingLayers");
         foreach (string name in new[] { "Background", "Environment", "Gameplay", "Projectile" })
@@ -315,7 +282,6 @@ public partial class SceneSetupTool
             var t = go.transform;
             sb.AppendLine($"{name}: pos=({t.position.x:F2}, {t.position.y:F2}, {t.position.z:F2})  scale=({t.localScale.x:F2}, {t.localScale.y:F2}, {t.localScale.z:F2})");
 
-            // Log children too
             foreach (Transform child in t)
                 sb.AppendLine($"  {child.name}: localPos=({child.localPosition.x:F2}, {child.localPosition.y:F2}, {child.localPosition.z:F2})  scale=({child.localScale.x:F2}, {child.localScale.y:F2}, {child.localScale.z:F2})");
         }
@@ -329,7 +295,6 @@ public partial class SceneSetupTool
     {
         var go = new GameObject("Main Camera");
         go.tag = "MainCamera";
-        // Position uses CamY/CamOrthoSize — single source of truth in environment partial
         go.transform.position = new Vector3(0f, CamY, -10f);
         var cam = go.AddComponent<Camera>();
         cam.orthographic     = true;

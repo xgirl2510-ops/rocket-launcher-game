@@ -9,8 +9,8 @@ using UnityEngine;
 public class Rocket : MonoBehaviour
 {
     [Header("Tags")]
-    [SerializeField] private string _groundTag = "Ground";
-    [SerializeField] private string _targetTag = "Target";
+    [SerializeField] private string _groundTag = GameConstants.TagGround;
+    [SerializeField] private string _targetTag = GameConstants.TagTarget;
 
     // Events — subscribed by GameManager, CameraController
     public event Action OnRocketLaunched;
@@ -19,7 +19,9 @@ public class Rocket : MonoBehaviour
 
     private Rigidbody2D _rb;
     private bool _isFlying;
+    private float _maxHeight;
     private RocketTrail _trail;
+    private SpriteRenderer[] _spriteRenderers;
 
     /// <summary>Whether the rocket is currently in flight.</summary>
     public bool IsFlying => _isFlying;
@@ -28,6 +30,7 @@ public class Rocket : MonoBehaviour
     {
         _rb = GetComponent<Rigidbody2D>();
         _trail = GetComponent<RocketTrail>();
+        _spriteRenderers = GetComponentsInChildren<SpriteRenderer>();
     }
 
     /// <summary>
@@ -42,6 +45,7 @@ public class Rocket : MonoBehaviour
         _rb.bodyType = RigidbodyType2D.Dynamic;
         _rb.AddForce(direction * force, ForceMode2D.Impulse);
         _isFlying = true;
+        _maxHeight = transform.position.y;
 
         if (_trail != null) _trail.StartTrail();
 
@@ -67,13 +71,15 @@ public class Rocket : MonoBehaviour
     /// <summary>Show/hide all child SpriteRenderers (for shatter effect).</summary>
     private void SetSpritesVisible(bool visible)
     {
-        foreach (var sr in GetComponentsInChildren<SpriteRenderer>())
+        foreach (var sr in _spriteRenderers)
             sr.enabled = visible;
     }
 
     private void FixedUpdate()
     {
         if (!_isFlying) return;
+        if (transform.position.y > _maxHeight)
+            _maxHeight = transform.position.y;
         RotateToVelocity();
     }
 
@@ -102,6 +108,10 @@ public class Rocket : MonoBehaviour
         if (_trail != null) _trail.StopTrail();
         ExplosionEffect.Spawn(transform.position, false);
         RocketDebris.Spawn(transform.position);
+
+        // Only spawn crater if rocket actually hit the ground, not an obstacle in the air
+        if (transform.position.y < GameConstants.GroundTop + 1.5f)
+            GroundScorch.Spawn(transform.position, _maxHeight);
         SetSpritesVisible(false);
 
         OnRocketLanded?.Invoke();
@@ -119,6 +129,11 @@ public class Rocket : MonoBehaviour
         if (_trail != null) _trail.StopTrail();
         ExplosionEffect.Spawn(transform.position, true);
         RocketDebris.Spawn(transform.position);
+
+        // Shatter the target — spawn bigger red debris, hide target
+        RocketDebris.SpawnTargetDebris(other.transform.position);
+        other.gameObject.SetActive(false);
+
         SetSpritesVisible(false);
 
         OnTargetHit?.Invoke();

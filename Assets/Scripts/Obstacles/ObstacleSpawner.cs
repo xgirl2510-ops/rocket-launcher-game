@@ -137,9 +137,11 @@ public class ObstacleSpawner : MonoBehaviour
 
             // Check not overlapping existing obstacles
             bool overlaps = false;
+            float minDistSqr = _obstacleMaxSize * 1.2f;
+            minDistSqr *= minDistSqr;
             foreach (var obs in _obstacles)
             {
-                if (Vector2.Distance(obs.transform.position, candidate) < _obstacleMaxSize * 1.2f)
+                if (((Vector2)obs.transform.position - candidate).sqrMagnitude < minDistSqr)
                 {
                     overlaps = true;
                     break;
@@ -156,9 +158,10 @@ public class ObstacleSpawner : MonoBehaviour
     {
         if (_safeTrajectory == null) return false;
 
+        float safeRadiusSqr = _safeRadius * _safeRadius;
         foreach (var tp in _safeTrajectory)
         {
-            if (Vector2.Distance(point, tp) < _safeRadius)
+            if ((point - tp).sqrMagnitude < safeRadiusSqr)
                 return true;
         }
         return false;
@@ -168,7 +171,7 @@ public class ObstacleSpawner : MonoBehaviour
     {
         var go = new GameObject("Obstacle");
         go.transform.position = new Vector3(position.x, position.y, 0f);
-        go.tag = "Ground"; // Rocket treats obstacle same as ground (stops on hit)
+        go.tag = GameConstants.TagGround; // Rocket treats obstacle same as ground (stops on hit)
 
         float size = Random.Range(_obstacleMinSize, _obstacleMaxSize);
         go.transform.localScale = new Vector3(size, size, 1f);
@@ -195,7 +198,7 @@ public class ObstacleSpawner : MonoBehaviour
     /// <summary>Get or create a simple white square sprite for obstacles.</summary>
     private Sprite CreateSquareSprite()
     {
-        if (_cachedSquareSprite != null) return _cachedSquareSprite;
+        if (_cachedSquareSprite) return _cachedSquareSprite;
 
         // Reuse existing generated sprite if available
         var existing = Resources.Load<Sprite>("ObstacleSquare");

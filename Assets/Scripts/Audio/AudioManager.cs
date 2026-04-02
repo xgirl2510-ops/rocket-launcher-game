@@ -82,4 +82,12 @@ public class AudioManager : MonoBehaviour
     {
         _thrustSource.Stop();
     }
+
+    private void OnDestroy()
+    {
+        if (_winClip != null) Destroy(_winClip);
+        if (_stretchClip != null) Destroy(_stretchClip);
+        if (_clickClip != null) Destroy(_clickClip);
+        if (_groundHitClip != null) Destroy(_groundHitClip);
+    }
 }
