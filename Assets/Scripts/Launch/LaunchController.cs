@@ -19,10 +19,6 @@ namespace RocketLauncher
         [SerializeField, Range(0.3f, 1f)] private float _minDragDistance = 0.5f;
         [SerializeField, Range(2f, 5f)] private float _maxDragDistance = 3.0f;
 
-        [Header("Launch Force")]
-        [SerializeField, Range(3f, 15f)] private float _minLaunchForce = 5f;
-        [SerializeField, Range(10f, 40f)] private float _maxLaunchForce = 30f;
-
         [Header("Vehicle Detection")]
         [SerializeField] private Collider2D _vehicleCollider;
 
@@ -91,7 +87,7 @@ namespace RocketLauncher
                 return;
             }
 
-            float launchForce = Mathf.Lerp(_minLaunchForce, _maxLaunchForce, normalizedForce);
+            float launchForce = Mathf.Lerp(GameConstants.MinLaunchForce, GameConstants.MaxLaunchForce, normalizedForce);
 
             _roundManager.OnShotFired();
             RoundManagerHUD.Instance?.UpdateStatsUI(_roundManager.RoundTracker);

@@ -7,6 +7,7 @@ namespace RocketLauncher
     /// Gold/yellow for target hit, grey/white for miss.
     /// Auto-destroys after particles finish playing.
     /// Instantiate via ExplosionEffect.Spawn() static helper.
+    /// Uses Sprites/Default material (always included in builds) — same pattern as RocketTrail.
     /// </summary>
     public class ExplosionEffect : MonoBehaviour
     {
@@ -17,6 +18,25 @@ namespace RocketLauncher
         [SerializeField] private float _startSize = 0.2f;
 
         private ParticleSystem _ps;
+        private static Material _cachedParticleMaterial;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState()
+        {
+            if (_cachedParticleMaterial != null)
+            {
+                Object.Destroy(_cachedParticleMaterial);
+                _cachedParticleMaterial = null;
+            }
+        }
+
+        /// <summary>Get or create a shared Sprites/Default material (always included in builds).</summary>
+        private static Material GetParticleMaterial()
+        {
+            if (_cachedParticleMaterial != null) return _cachedParticleMaterial;
+            _cachedParticleMaterial = new Material(Shader.Find("Sprites/Default"));
+            return _cachedParticleMaterial;
+        }
 
         /// <summary>
         /// Spawn an explosion at the given position.
@@ -95,6 +115,7 @@ namespace RocketLauncher
             colorOverLifetime.color = gradient;
 
             var renderer = _ps.GetComponent<ParticleSystemRenderer>();
+            renderer.material = GetParticleMaterial();
             renderer.sortingLayerName = "Projectile";
             renderer.sortingOrder = 10;
         }

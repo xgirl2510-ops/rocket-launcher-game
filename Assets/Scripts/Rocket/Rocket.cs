@@ -104,7 +104,7 @@ namespace RocketLauncher
             ExplosionEffect.Spawn(transform.position, false);
             RocketDebris.Spawn(transform.position);
 
-            if (transform.position.y < GameConstants.GroundTop + 1.5f)
+            if (transform.position.y < GameConstants.GroundTop + GameConstants.CraterSpawnHeightThreshold)
                 GroundScorch.Spawn(transform.position, _maxHeight);
             SetSpritesVisible(false);
 

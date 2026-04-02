@@ -96,11 +96,14 @@ namespace RocketLauncher
                 theta = Mathf.Atan2(v * v + Mathf.Sqrt(discriminant), g * dx);
             }
 
-            float vx = v * Mathf.Cos(theta);
-            float vy = v * Mathf.Sin(theta);
+            // Clamp speed to the same range used at launch so the trajectory arc
+            // matches the rocket's actual flight path during auto-play.
+            float vClamped = Mathf.Clamp(v, GameConstants.MinLaunchForce, GameConstants.MaxLaunchForce);
+            float vx = vClamped * Mathf.Cos(theta);
+            float vy = vClamped * Mathf.Sin(theta);
 
             _lastLaunchDir = new Vector2(vx, vy).normalized;
-            _lastLaunchForce = Mathf.Clamp(v, GameConstants.MinLaunchForce, GameConstants.MaxLaunchForce);
+            _lastLaunchForce = vClamped;
 
             float totalTime = Mathf.Abs(dx) / Mathf.Max(vx, 0.1f);
 

@@ -127,6 +127,8 @@ namespace RocketLauncher
         public void HandleRestart()
         {
             _isAutoPlaying = false;
+            // Stop only RoundManager's own coroutines (reload/autoplay delays).
+            // CameraController manages its own coroutines via PlayIntro → StopActiveCoroutine.
             StopAllCoroutines();
 
             if (AudioManager.Instance != null)

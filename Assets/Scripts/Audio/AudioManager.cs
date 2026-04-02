@@ -62,6 +62,7 @@ namespace RocketLauncher
         public void PlayHitTarget()
         {
             if (_boomClip != null) _oneShotSource.PlayOneShot(_boomClip);
+            else if (_groundHitClip != null) _oneShotSource.PlayOneShot(_groundHitClip);
         }
 
         public void PlayStretch() { if (_stretchClip != null) _oneShotSource.PlayOneShot(_stretchClip); }
