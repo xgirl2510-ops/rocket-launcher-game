@@ -68,9 +68,9 @@ public class CameraController : MonoBehaviour
         // Subscribe to rocket events
         if (_rocket != null)
         {
-            _rocket.OnRocketLaunched += () => SetState(CameraState.Following);
-            _rocket.OnRocketLanded += () => SetState(CameraState.Landed);
-            _rocket.OnTargetHit += () => SetState(CameraState.Landed);
+            _rocket.OnRocketLaunched += HandleRocketLaunched;
+            _rocket.OnRocketLanded += HandleRocketLanded;
+            _rocket.OnTargetHit += HandleRocketHitTarget;
         }
 
         // Start intro pan
@@ -239,6 +239,20 @@ public class CameraController : MonoBehaviour
 
         _currentState = CameraState.Idle;
         OnLookTargetComplete?.Invoke();
+    }
+
+    private void HandleRocketLaunched() => SetState(CameraState.Following);
+    private void HandleRocketLanded() => SetState(CameraState.Landed);
+    private void HandleRocketHitTarget() => SetState(CameraState.Landed);
+
+    private void OnDestroy()
+    {
+        if (_rocket != null)
+        {
+            _rocket.OnRocketLaunched -= HandleRocketLaunched;
+            _rocket.OnRocketLanded -= HandleRocketLanded;
+            _rocket.OnTargetHit -= HandleRocketHitTarget;
+        }
     }
 
     private void SetState(CameraState newState)

@@ -24,7 +24,7 @@ public partial class SceneSetupTool
     // Step 2: Ground — thin visible strip (2 units above camera bottom)
     //         but sprite extends 50 units down so camera never reveals sky below
     private const float GroundVisibleHeight = 2f;
-    private static readonly float GroundTop = CamBottom + GroundVisibleHeight;  // -5
+    private const float GroundTop = GameConstants.GroundTop;  // -5 — single source of truth
     private const float GroundSpriteHeight = 50f;  // huge so bottom never shows
     private static readonly float GroundCenterY = GroundTop - GroundSpriteHeight / 2f;
 

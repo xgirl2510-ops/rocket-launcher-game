@@ -98,46 +98,6 @@ public static class ProceduralAudioClipGenerator
         return clip;
     }
 
-    /// <summary>Big explosion with metallic shrapnel — target destroyed. Louder than ground hit.</summary>
-    public static AudioClip CreateTargetHit()
-    {
-        float duration = 0.9f;
-        int samples = (int)(SampleRate * duration);
-        var clip = AudioClip.Create("TargetExplosion", samples, 1, SampleRate, false);
-        var data = new float[samples];
-
-        float prevNoise = 0f;
-
-        for (int i = 0; i < samples; i++)
-        {
-            float t = (float)i / samples;
-            float phase = (float)i / SampleRate;
-
-            // Two-stage: instant attack, slower decay than ground hit
-            float envelope = t < 0.015f ? t / 0.015f : Mathf.Exp(-t * 3.5f);
-
-            // Even deeper boom
-            float boomFreq = Mathf.Lerp(180f, 20f, Mathf.Sqrt(t));
-            float boom = Mathf.Sin(2f * Mathf.PI * boomFreq * phase);
-            boom = Mathf.Clamp(boom * 2f, -1f, 1f) * 0.8f;
-
-            // Metallic shrapnel ring
-            float ring = Mathf.Sin(2f * Mathf.PI * 600f * phase) * Mathf.Exp(-t * 7f) * 0.15f
-                       + Mathf.Sin(2f * Mathf.PI * 1100f * phase) * Mathf.Exp(-t * 9f) * 0.08f;
-
-            // Blast + rumble
-            float rawNoise = Random.value * 2f - 1f;
-            prevNoise += 0.15f * (rawNoise - prevNoise);
-            float blast = rawNoise * Mathf.Exp(-t * 18f) * 0.7f;
-            float rumble = prevNoise * 0.35f;
-
-            data[i] = Mathf.Clamp((boom + ring + blast + rumble) * envelope, -1f, 1f);
-        }
-
-        clip.SetData(data, 0);
-        return clip;
-    }
-
     /// <summary>3 ascending sine tones — win jingle.</summary>
     public static AudioClip CreateWinJingle()
     {

@@ -29,6 +29,9 @@ public class ObstacleSpawner : MonoBehaviour
 
     private static Sprite _cachedSquareSprite;
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticState() => _cachedSquareSprite = null;
+
     private readonly List<GameObject> _obstacles = new List<GameObject>();
     private Vector2[] _safeTrajectory;
     private Vector2 _lastLaunchDir;

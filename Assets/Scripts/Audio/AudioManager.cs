@@ -8,6 +8,9 @@ public class AudioManager : MonoBehaviour
 {
     public static AudioManager Instance { get; private set; }
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticState() => Instance = null;
+
     [Header("Audio Clips (assign via inspector or editor tool)")]
     [SerializeField] private AudioClip _launchClip;
     [SerializeField] private AudioClip _thrustClip;

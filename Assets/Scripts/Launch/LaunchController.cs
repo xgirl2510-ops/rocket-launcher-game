@@ -59,10 +59,7 @@ public class LaunchController : MonoBehaviour
     private bool _stretchPlayed;
     private int _missCount;
     private bool _isAutoPlaying;
-    private int _roundShots;
-    private int _totalShots;
-    private int _roundNumber = 1;
-    private int _bestScore;
+    private readonly GameRoundTracker _roundTracker = new GameRoundTracker();
     private const int MISSES_BEFORE_AUTOPLAY = 5;
 
     private void Awake()
@@ -173,8 +170,7 @@ public class LaunchController : MonoBehaviour
 
         float launchForce = Mathf.Lerp(_minLaunchForce, _maxLaunchForce, normalizedForce);
 
-        _roundShots++;
-        _totalShots++;
+        _roundTracker.IncrementShots();
         UpdateStatsUI();
 
         _rocket.Launch(launchDirection, launchForce);
@@ -232,11 +228,8 @@ public class LaunchController : MonoBehaviour
         }
 
         // Update best score
-        if (_bestScore == 0 || _roundShots < _bestScore)
-        {
-            _bestScore = _roundShots;
+        if (_roundTracker.TryUpdateBest(_roundTracker.RoundShots))
             UpdateStatsUI();
-        }
 
         _rocket.gameObject.SetActive(false);
 
@@ -312,8 +305,7 @@ public class LaunchController : MonoBehaviour
         if (_angleText != null) _angleText.gameObject.SetActive(false);
         if (_forceText != null) _forceText.gameObject.SetActive(false);
 
-        _roundNumber++;
-        _roundShots = 0;
+        _roundTracker.NewRound();
         UpdateStatsUI();
 
         // Randomize target BEFORE intro so camera shows new position
@@ -436,8 +428,31 @@ public class LaunchController : MonoBehaviour
     private void UpdateStatsUI()
     {
         if (_statsText == null) return;
-        string best = _bestScore > 0 ? _bestScore.ToString() : "--";
-        _statsText.text = $"Round {_roundNumber}  ·  Shots {_roundShots}  ·  Best {best}";
+        _statsText.text = _roundTracker.GetStatsText();
+    }
+
+    private void OnDestroy()
+    {
+        CancelInvoke();
+
+        if (_rocket != null)
+        {
+            _rocket.OnRocketLanded -= HandleRocketMiss;
+            _rocket.OnTargetHit -= HandleTargetHit;
+        }
+
+        if (_cameraController != null)
+        {
+            _cameraController.OnIntroComplete -= OnIntroDone;
+            _cameraController.OnLookTargetComplete -= OnLookTargetDone;
+        }
+
+        if (_restartButton != null)
+            _restartButton.onClick.RemoveListener(HandleRestart);
+        if (_autoPlayButton != null)
+            _autoPlayButton.onClick.RemoveListener(HandleAutoPlay);
+        if (_lookTargetButton != null)
+            _lookTargetButton.onClick.RemoveListener(HandleLookTarget);
     }
 
     public void EnableInput()
