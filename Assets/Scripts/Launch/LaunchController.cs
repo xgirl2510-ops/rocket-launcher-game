@@ -137,24 +137,17 @@ public class LaunchController : MonoBehaviour
 
     private void HandleTouchMoved()
     {
-        Vector2 fingerWorldPos = _camera.ScreenToWorldPoint(Input.mousePosition);
-        Vector2 spawnPos = _spawnPoint.position;
-
-        Vector2 dragVector = spawnPos - fingerWorldPos;
-        float dragDistance = dragVector.magnitude;
-
-        if (dragDistance < _minDragDistance)
+        if (!TryComputeDrag(out Vector2 launchDirection, out float normalizedForce, out _))
         {
-            _aimArrow.Hide();
+            if (_aimArrow != null) _aimArrow.Hide();
             return;
         }
 
-        float clampedDistance = Mathf.Min(dragDistance, _maxDragDistance);
-        float normalizedForce = (clampedDistance - _minDragDistance) / (_maxDragDistance - _minDragDistance);
-        Vector2 launchDirection = dragVector.normalized;
-
-        _aimArrow.Show();
-        _aimArrow.UpdateArrow(launchDirection, normalizedForce);
+        if (_aimArrow != null)
+        {
+            _aimArrow.Show();
+            _aimArrow.UpdateArrow(launchDirection, normalizedForce);
+        }
         RotateRocketToDirection(launchDirection);
 
         if (!_stretchPlayed && AudioManager.Instance != null)
@@ -170,25 +163,15 @@ public class LaunchController : MonoBehaviour
     private void HandleTouchEnded()
     {
         _isDragging = false;
+        if (_aimArrow != null) _aimArrow.Hide();
 
-        Vector2 fingerWorldPos = _camera.ScreenToWorldPoint(Input.mousePosition);
-        Vector2 spawnPos = _spawnPoint.position;
-
-        Vector2 dragVector = spawnPos - fingerWorldPos;
-        float dragDistance = dragVector.magnitude;
-
-        _aimArrow.Hide();
-
-        if (dragDistance < _minDragDistance)
+        if (!TryComputeDrag(out Vector2 launchDirection, out float normalizedForce, out _))
         {
             _rocket.transform.rotation = Quaternion.identity;
             return;
         }
 
-        float clampedDistance = Mathf.Min(dragDistance, _maxDragDistance);
-        float normalizedForce = (clampedDistance - _minDragDistance) / (_maxDragDistance - _minDragDistance);
         float launchForce = Mathf.Lerp(_minLaunchForce, _maxLaunchForce, normalizedForce);
-        Vector2 launchDirection = dragVector.normalized;
 
         _roundShots++;
         _totalShots++;
@@ -201,6 +184,31 @@ public class LaunchController : MonoBehaviour
             AudioManager.Instance.StartThrust();
         }
         DisableInput();
+    }
+
+    /// <summary>
+    /// Computes drag vector from current mouse position to spawn point.
+    /// Returns false if drag distance is below minimum threshold.
+    /// </summary>
+    private bool TryComputeDrag(out Vector2 direction, out float normalizedForce, out float rawDistance)
+    {
+        Vector2 fingerWorldPos = _camera.ScreenToWorldPoint(Input.mousePosition);
+        Vector2 spawnPos = _spawnPoint.position;
+
+        Vector2 dragVector = spawnPos - fingerWorldPos;
+        rawDistance = dragVector.magnitude;
+
+        if (rawDistance < _minDragDistance)
+        {
+            direction = Vector2.zero;
+            normalizedForce = 0f;
+            return false;
+        }
+
+        float clampedDistance = Mathf.Min(rawDistance, _maxDragDistance);
+        normalizedForce = (clampedDistance - _minDragDistance) / (_maxDragDistance - _minDragDistance);
+        direction = dragVector.normalized;
+        return true;
     }
 
     /// <summary>Rocket hit target — hide rocket, show win (or reset if auto-play demo).</summary>
@@ -283,6 +291,8 @@ public class LaunchController : MonoBehaviour
     /// <summary>Restart button clicked — randomize target, intro pan, then enable input.</summary>
     private void HandleRestart()
     {
+        CancelInvoke();
+
         if (AudioManager.Instance != null)
             AudioManager.Instance.PlayClick();
 
@@ -347,6 +357,8 @@ public class LaunchController : MonoBehaviour
     private void HandleAutoPlay()
     {
         if (!_inputEnabled || _obstacleSpawner == null) return;
+
+        CancelInvoke();
 
         if (AudioManager.Instance != null)
             AudioManager.Instance.PlayClick();
@@ -437,6 +449,6 @@ public class LaunchController : MonoBehaviour
     {
         _inputEnabled = false;
         _isDragging = false;
-        _aimArrow.Hide();
+        _aimArrow?.Hide();
     }
 }

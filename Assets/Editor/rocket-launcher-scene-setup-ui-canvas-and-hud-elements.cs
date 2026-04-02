@@ -25,7 +25,6 @@ public partial class SceneSetupTool
 
         // Center overlays (hidden by default)
         CreateTMPLabel(canvasGO, "WinText",  "YOU WIN!", 72, "#FFD700", new Vector2(0, 200), new Vector2(700, 130));
-        CreateTMPLabel(canvasGO, "MissText", "MISS!",    60, "#FFFFFF", new Vector2(0, 200), new Vector2(600, 110));
         CreateRestartButton(canvasGO);
 
         // Bottom-center buttons

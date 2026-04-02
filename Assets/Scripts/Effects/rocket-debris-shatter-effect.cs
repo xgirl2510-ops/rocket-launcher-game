@@ -17,7 +17,10 @@ public class RocketDebris : MonoBehaviour
 
     private static readonly List<GameObject> _allDebris = new List<GameObject>();
 
-    private const float GroundY = -5f; // must match GroundTop in scene setup
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticState() => _allDebris.Clear();
+
+    private const float GroundY = GameConstants.GroundTop;
     private const float Gravity = 12f;
 
     private const float AutoDestroyDelay = 3f; // debris fades and self-destructs

@@ -19,6 +19,7 @@ public class AudioManager : MonoBehaviour
     private AudioClip _winClip;
     private AudioClip _stretchClip;
     private AudioClip _clickClip;
+    private AudioClip _groundHitClip;
 
     private void Awake()
     {
@@ -42,6 +43,7 @@ public class AudioManager : MonoBehaviour
         _winClip = ProceduralAudioClipGenerator.CreateWinJingle();
         _stretchClip = ProceduralAudioClipGenerator.CreateStretch();
         _clickClip = ProceduralAudioClipGenerator.CreateClick();
+        _groundHitClip = ProceduralAudioClipGenerator.CreateGroundHit();
     }
 
     public void PlayLaunch()
@@ -52,6 +54,7 @@ public class AudioManager : MonoBehaviour
     public void PlayHitGround()
     {
         if (_boomClip != null) _oneShotSource.PlayOneShot(_boomClip);
+        else if (_groundHitClip != null) _oneShotSource.PlayOneShot(_groundHitClip);
     }
 
     public void PlayHitTarget()

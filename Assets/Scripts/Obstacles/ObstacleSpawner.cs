@@ -27,6 +27,8 @@ public class ObstacleSpawner : MonoBehaviour
     [SerializeField] private float _spawnMinY = -4f;
     [SerializeField] private float _spawnMaxY = 12f;
 
+    private static Sprite _cachedSquareSprite;
+
     private readonly List<GameObject> _obstacles = new List<GameObject>();
     private Vector2[] _safeTrajectory;
     private Vector2 _lastLaunchDir;
@@ -190,9 +192,15 @@ public class ObstacleSpawner : MonoBehaviour
     /// <summary>Get or create a simple white square sprite for obstacles.</summary>
     private Sprite CreateSquareSprite()
     {
+        if (_cachedSquareSprite != null) return _cachedSquareSprite;
+
         // Reuse existing generated sprite if available
         var existing = Resources.Load<Sprite>("ObstacleSquare");
-        if (existing != null) return existing;
+        if (existing != null)
+        {
+            _cachedSquareSprite = existing;
+            return _cachedSquareSprite;
+        }
 
         // Create a 4x4 white texture at runtime
         Texture2D tex = new Texture2D(4, 4);
@@ -202,6 +210,7 @@ public class ObstacleSpawner : MonoBehaviour
         tex.Apply();
         tex.filterMode = FilterMode.Point;
 
-        return Sprite.Create(tex, new Rect(0, 0, 4, 4), new Vector2(0.5f, 0.5f), 4f);
+        _cachedSquareSprite = Sprite.Create(tex, new Rect(0, 0, 4, 4), new Vector2(0.5f, 0.5f), 4f);
+        return _cachedSquareSprite;
     }
 }
