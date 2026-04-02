@@ -39,6 +39,11 @@ namespace RocketLauncher
         private static void ResetStaticState()
         {
             _allDebris.Clear();
+            if (_cachedSprite != null)
+            {
+                Object.Destroy(_cachedSprite.texture);
+                Object.Destroy(_cachedSprite);
+            }
             _cachedSprite = null;
         }
 

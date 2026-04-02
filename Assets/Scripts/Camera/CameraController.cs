@@ -253,6 +253,7 @@ namespace RocketLauncher
 
         private void SetState(CameraState newState)
         {
+            StopActiveCoroutine();
             _currentState = newState;
             _smoothVelocity = Vector2.zero;
         }

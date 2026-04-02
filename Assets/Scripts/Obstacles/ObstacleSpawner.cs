@@ -32,7 +32,15 @@ namespace RocketLauncher
         private static Sprite _cachedSquareSprite;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStaticState() => _cachedSquareSprite = null;
+        private static void ResetStaticState()
+        {
+            if (_cachedSquareSprite != null)
+            {
+                Object.Destroy(_cachedSquareSprite.texture);
+                Object.Destroy(_cachedSquareSprite);
+            }
+            _cachedSquareSprite = null;
+        }
 
         private readonly List<GameObject> _obstacles = new List<GameObject>();
         private Vector2[] _safeTrajectory;

@@ -19,6 +19,9 @@ namespace RocketLauncher
         private ParticleSystem _ps;
         private static Material _cachedParticleMaterial;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState() => _cachedParticleMaterial = null;
+
         private void Awake()
         {
             _ps = GetComponentInChildren<ParticleSystem>();

@@ -126,6 +126,7 @@ namespace RocketLauncher
         /// <summary>Restart button clicked — randomize target, intro pan, then enable input.</summary>
         public void HandleRestart()
         {
+            _isAutoPlaying = false;
             StopAllCoroutines();
 
             if (AudioManager.Instance != null)

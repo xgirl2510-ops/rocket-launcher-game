@@ -10,53 +10,6 @@ namespace RocketLauncher
     {
         private const int SampleRate = 44100;
 
-        /// <summary>Short noise burst with frequency sweep down — rocket whoosh.</summary>
-        public static AudioClip CreateLaunchWhoosh()
-        {
-            float duration = 0.35f;
-            int samples = (int)(SampleRate * duration);
-            var clip = AudioClip.Create("LaunchWhoosh", samples, 1, SampleRate, false);
-            var data = new float[samples];
-
-            for (int i = 0; i < samples; i++)
-            {
-                float t = (float)i / samples;
-                float envelope = (1f - t) * (1f - t);
-                float freq = Mathf.Lerp(800f, 100f, t);
-                float sine = Mathf.Sin(2f * Mathf.PI * freq * t * duration);
-                float noise = (Random.value * 2f - 1f) * 0.6f;
-                data[i] = (sine * 0.4f + noise) * envelope * 0.5f;
-            }
-
-            clip.SetData(data, 0);
-            return clip;
-        }
-
-        /// <summary>Rocket engine rumble — pure sine harmonics for gapless loop.</summary>
-        public static AudioClip CreateThrustLoop()
-        {
-            float duration = 1.0f;
-            int samples = (int)(SampleRate * duration);
-            var clip = AudioClip.Create("ThrustLoop", samples, 1, SampleRate, false);
-            var data = new float[samples];
-
-            for (int i = 0; i < samples; i++)
-            {
-                float phase = (float)i / SampleRate;
-
-                float engine = Mathf.Sin(2f * Mathf.PI * 45f * phase) * 0.40f
-                             + Mathf.Sin(2f * Mathf.PI * 90f * phase) * 0.25f
-                             + Mathf.Sin(2f * Mathf.PI * 135f * phase) * 0.15f
-                             + Mathf.Sin(2f * Mathf.PI * 180f * phase) * 0.08f
-                             + Mathf.Sin(2f * Mathf.PI * 22f * phase) * 0.20f;
-
-                data[i] = engine * 0.45f;
-            }
-
-            clip.SetData(data, 0);
-            return clip;
-        }
-
         /// <summary>Heavy explosion — massive bass drop + distorted noise burst.</summary>
         public static AudioClip CreateGroundHit()
         {
