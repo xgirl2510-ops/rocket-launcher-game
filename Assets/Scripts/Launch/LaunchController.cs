@@ -32,6 +32,15 @@ namespace RocketLauncher
             _camera = Camera.main;
         }
 
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (_rocket == null) Debug.LogWarning("[LaunchController] _rocket not assigned.", this);
+            if (_spawnPoint == null) Debug.LogWarning("[LaunchController] _spawnPoint not assigned.", this);
+            if (_roundManager == null) Debug.LogWarning("[LaunchController] _roundManager not assigned.", this);
+        }
+#endif
+
         private void Update()
         {
             if (!_inputEnabled) return;

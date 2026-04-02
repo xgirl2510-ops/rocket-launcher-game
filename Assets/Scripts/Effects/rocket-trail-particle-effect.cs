@@ -13,21 +13,8 @@ namespace RocketLauncher
         [SerializeField] private float _emissionRate = 40f;
         [SerializeField] private float _particleLifetime = 0.4f;
         [SerializeField] private float _startSize = 0.15f;
-        [SerializeField] private Color _startColor = new Color(1f, 0.3f, 0f, 1f);
-        [SerializeField] private Color _endColor = new Color(0.4f, 0.4f, 0.4f, 0f);
 
         private ParticleSystem _ps;
-        private static Material _cachedParticleMaterial;
-
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStaticState()
-        {
-            if (_cachedParticleMaterial != null)
-            {
-                Object.Destroy(_cachedParticleMaterial);
-                _cachedParticleMaterial = null;
-            }
-        }
 
         private void Awake()
         {
@@ -58,14 +45,6 @@ namespace RocketLauncher
         {
             if (_ps == null) return;
             _ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-        }
-
-        /// <summary>Get or create a shared particle material using Sprites/Default (always included in builds).</summary>
-        private static Material GetParticleMaterial()
-        {
-            if (_cachedParticleMaterial != null) return _cachedParticleMaterial;
-            _cachedParticleMaterial = new Material(Shader.Find("Sprites/Default"));
-            return _cachedParticleMaterial;
         }
 
         private ParticleSystem CreateTrailParticleSystem()
@@ -116,7 +95,7 @@ namespace RocketLauncher
             colorOverLifetime.color = gradient;
 
             var renderer = ps.GetComponent<ParticleSystemRenderer>();
-            renderer.material = GetParticleMaterial();
+            renderer.material = RuntimeSpriteFactory.GetParticleMaterial();
             renderer.sortingLayerName = "Projectile";
             renderer.sortingOrder = -1;
 

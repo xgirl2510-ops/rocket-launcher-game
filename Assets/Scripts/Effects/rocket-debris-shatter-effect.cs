@@ -33,18 +33,11 @@ namespace RocketLauncher
         };
 
         private static readonly List<GameObject> _allDebris = new List<GameObject>();
-        private static Sprite _cachedSprite;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStaticState()
         {
             _allDebris.Clear();
-            if (_cachedSprite != null)
-            {
-                Object.Destroy(_cachedSprite.texture);
-                Object.Destroy(_cachedSprite);
-            }
-            _cachedSprite = null;
         }
 
         private const float Gravity = 12f;
@@ -76,7 +69,7 @@ namespace RocketLauncher
         private static void SpawnInternal(Vector2 position, Color[] colors, int count,
             float minSize, float maxSize, float minSpeed, float maxSpeed)
         {
-            var sprite = GetOrCreateSprite();
+            var sprite = RuntimeSpriteFactory.GetSolidSprite();
 
             for (int i = 0; i < count; i++)
             {
@@ -113,21 +106,6 @@ namespace RocketLauncher
                     Destroy(_allDebris[i]);
             }
             _allDebris.Clear();
-        }
-
-        private static Sprite GetOrCreateSprite()
-        {
-            if (_cachedSprite) return _cachedSprite;
-
-            var tex = new Texture2D(4, 4);
-            Color[] pixels = new Color[16];
-            for (int p = 0; p < 16; p++) pixels[p] = Color.white;
-            tex.SetPixels(pixels);
-            tex.Apply();
-            tex.filterMode = FilterMode.Point;
-
-            _cachedSprite = Sprite.Create(tex, new Rect(0, 0, 4, 4), new Vector2(0.5f, 0.5f), 4f);
-            return _cachedSprite;
         }
 
         private void FixedUpdate()

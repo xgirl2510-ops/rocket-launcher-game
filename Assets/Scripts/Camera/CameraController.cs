@@ -65,6 +65,15 @@ namespace RocketLauncher
             _defaultOrthoSize = _camera.orthographicSize;
         }
 
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (_rocket == null) Debug.LogWarning("[CameraController] _rocket not assigned.", this);
+            if (_vehicleTransform == null) Debug.LogWarning("[CameraController] _vehicleTransform not assigned.", this);
+            if (_targetTransform == null) Debug.LogWarning("[CameraController] _targetTransform not assigned.", this);
+        }
+#endif
+
         private void Start()
         {
             if (_rocket == null || _vehicleTransform == null || _targetTransform == null)

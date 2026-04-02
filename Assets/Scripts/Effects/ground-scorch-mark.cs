@@ -5,10 +5,10 @@ namespace RocketLauncher
 {
     /// <summary>
     /// Static utility: creates real crater holes in the ground at rocket impact points.
-    /// Three layers per crater:
+    /// Two layers per crater:
     ///   1. SpriteMask — cuts the ground sprite (VisibleOutsideMask)
     ///   2. Dark interior — behind ground, visible through the hole (shows depth)
-    ///   3. Scorch marks — burn stains on ground surface around the hole
+    /// Also spawns dirt debris via RocketDebris.SpawnDirtDebris().
     /// Persists until ClearAll() is called (round restart).
     /// </summary>
     public static class GroundScorch
@@ -17,7 +17,6 @@ namespace RocketLauncher
         private static readonly List<float> _craterXPositions = new List<float>();
         private static readonly List<float> _craterWidths = new List<float>();
         private static readonly List<float> _craterDepths = new List<float>();
-        private static Sprite _holeSprite;
         private static bool _groundPrepared;
 
         private const int MaskVariantCount = 8;
@@ -30,31 +29,23 @@ namespace RocketLauncher
             _craterXPositions.Clear();
             _craterWidths.Clear();
             _craterDepths.Clear();
-            DestroySprites();
+            DestroyMaskVariants();
             _groundPrepared = false;
         }
 
-        /// <summary>Destroy all cached textures/sprites to prevent GPU memory leak.</summary>
-        private static void DestroySprites()
+        /// <summary>Destroy cached mask variant textures/sprites to prevent GPU memory leak.</summary>
+        private static void DestroyMaskVariants()
         {
-            if (_holeSprite != null)
+            if (_maskVariants == null) return;
+            for (int i = 0; i < _maskVariants.Length; i++)
             {
-                Object.Destroy(_holeSprite.texture);
-                Object.Destroy(_holeSprite);
-                _holeSprite = null;
-            }
-            if (_maskVariants != null)
-            {
-                for (int i = 0; i < _maskVariants.Length; i++)
+                if (_maskVariants[i] != null)
                 {
-                    if (_maskVariants[i] != null)
-                    {
-                        Object.Destroy(_maskVariants[i].texture);
-                        Object.Destroy(_maskVariants[i]);
-                    }
+                    Object.Destroy(_maskVariants[i].texture);
+                    Object.Destroy(_maskVariants[i]);
                 }
-                _maskVariants = null;
             }
+            _maskVariants = null;
         }
 
         /// <summary>Find ground and enable mask interaction so SpriteMasks cut it.</summary>
@@ -73,7 +64,7 @@ namespace RocketLauncher
         public static void Spawn(Vector2 impactPosition, float maxHeight = 10f)
         {
             PrepareGround();
-            EnsureSprites();
+            EnsureMaskVariants();
 
             float groundY = GameConstants.GroundTop;
 
@@ -98,7 +89,7 @@ namespace RocketLauncher
             holeGo.transform.localPosition = new Vector3(0f, -craterH, 0f);
             holeGo.transform.localScale = new Vector3(craterW * 3f, craterH * 3f, 1f);
             var holeSr = holeGo.AddComponent<SpriteRenderer>();
-            holeSr.sprite = _holeSprite;
+            holeSr.sprite = RuntimeSpriteFactory.GetSolidSprite();
             holeSr.color = new Color(0.2f, 0.14f, 0.06f, 1f);
             holeSr.sortingLayerName = "Environment";
             holeSr.sortingOrder = -1;
@@ -156,9 +147,8 @@ namespace RocketLauncher
             _craterDepths.Clear();
         }
 
-        private static void EnsureSprites()
+        private static void EnsureMaskVariants()
         {
-            if (!_holeSprite) _holeSprite = BuildSolidSprite();
             if (_maskVariants == null)
             {
                 _maskVariants = new Sprite[MaskVariantCount];
@@ -202,16 +192,5 @@ namespace RocketLauncher
             return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 1f), size);
         }
 
-        /// <summary>Simple 4x4 white solid sprite — color tinted via SpriteRenderer.</summary>
-        private static Sprite BuildSolidSprite()
-        {
-            var tex = new Texture2D(4, 4);
-            var pixels = new Color[16];
-            for (int i = 0; i < 16; i++) pixels[i] = Color.white;
-            tex.SetPixels(pixels);
-            tex.Apply();
-            tex.filterMode = FilterMode.Point;
-            return Sprite.Create(tex, new Rect(0, 0, 4, 4), new Vector2(0.5f, 0.5f), 4f);
-        }
     }
 }

@@ -42,6 +42,16 @@ namespace RocketLauncher
             RandomizeTarget();
         }
 
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (_rocket == null) Debug.LogWarning("[RoundManager] _rocket not assigned.", this);
+            if (_spawnPoint == null) Debug.LogWarning("[RoundManager] _spawnPoint not assigned.", this);
+            if (_launchController == null) Debug.LogWarning("[RoundManager] _launchController not assigned.", this);
+            if (_targetTransform == null) Debug.LogWarning("[RoundManager] _targetTransform not assigned.", this);
+        }
+#endif
+
         private void Start()
         {
             if (_rocket != null)

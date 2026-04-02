@@ -29,19 +29,6 @@ namespace RocketLauncher
         [SerializeField] private float _spawnMinY = -4f;
         [SerializeField] private float _spawnMaxY = 12f;
 
-        private static Sprite _cachedSquareSprite;
-
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStaticState()
-        {
-            if (_cachedSquareSprite != null)
-            {
-                Object.Destroy(_cachedSquareSprite.texture);
-                Object.Destroy(_cachedSquareSprite);
-            }
-            _cachedSquareSprite = null;
-        }
-
         private readonly List<GameObject> _obstacles = new List<GameObject>();
         private Vector2[] _safeTrajectory;
         private Vector2 _lastLaunchDir;
@@ -180,7 +167,7 @@ namespace RocketLauncher
             go.transform.localScale = new Vector3(size, size, 1f);
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = GetOrCreateSquareSprite();
+            sr.sprite = RuntimeSpriteFactory.GetSolidSprite();
             sr.color = _obstacleColor;
             sr.sortingLayerName = "Gameplay";
 
@@ -198,20 +185,5 @@ namespace RocketLauncher
             _obstacles.Clear();
         }
 
-        /// <summary>Get or create a simple white square sprite for obstacles (runtime-generated).</summary>
-        private static Sprite GetOrCreateSquareSprite()
-        {
-            if (_cachedSquareSprite) return _cachedSquareSprite;
-
-            Texture2D tex = new Texture2D(4, 4);
-            Color[] pixels = new Color[16];
-            for (int i = 0; i < 16; i++) pixels[i] = Color.white;
-            tex.SetPixels(pixels);
-            tex.Apply();
-            tex.filterMode = FilterMode.Point;
-
-            _cachedSquareSprite = Sprite.Create(tex, new Rect(0, 0, 4, 4), new Vector2(0.5f, 0.5f), 4f);
-            return _cachedSquareSprite;
-        }
     }
 }
