@@ -57,8 +57,10 @@ namespace RocketLauncher
 
         private void Start()
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (_launchController == null) Debug.LogError("[RoundManager] _launchController is null.", this);
             if (_spawnPoint == null) Debug.LogError("[RoundManager] _spawnPoint is null.", this);
+#endif
 
             if (_rocket != null)
             {

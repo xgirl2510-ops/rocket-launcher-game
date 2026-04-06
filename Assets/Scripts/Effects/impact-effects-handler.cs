@@ -13,8 +13,10 @@ namespace RocketLauncher
 
         private void Start()
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (_rocket == null)
                 Debug.LogError("[ImpactEffectsHandler] _rocket not assigned — impact effects disabled.", this);
+#endif
         }
 
         private void OnEnable()

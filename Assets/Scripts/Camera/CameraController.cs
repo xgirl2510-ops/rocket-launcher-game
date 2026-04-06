@@ -82,7 +82,9 @@ namespace RocketLauncher
         {
             if (_rocket == null || _vehicleTransform == null || _targetTransform == null)
             {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
                 Debug.LogError("[CameraController] Missing references — wire via editor tool (Tools > Rocket Launcher > Setup Scene).");
+#endif
                 enabled = false;
                 return;
             }

@@ -52,8 +52,10 @@ namespace RocketLauncher
             var shader = Shader.Find("Sprites/Default");
             if (shader == null)
             {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
                 Debug.LogError("[RuntimeSpriteFactory] Sprites/Default shader not found. " +
                     "Ensure it is in Project Settings > Graphics > Always Included Shaders.");
+#endif
                 shader = Shader.Find("UI/Default");
             }
 

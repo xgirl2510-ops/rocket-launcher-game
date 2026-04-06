@@ -30,7 +30,9 @@ namespace RocketLauncher
         private void Awake()
         {
             _camera = Camera.main;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (_camera == null) Debug.LogError("[LaunchController] No main camera found.", this);
+#endif
         }
 
 #if UNITY_EDITOR
