@@ -101,8 +101,11 @@ namespace RocketLauncher
 
             float launchForce = Mathf.Lerp(GameConstants.MinLaunchForce, GameConstants.MaxLaunchForce, normalizedForce);
 
-            _roundManager?.OnShotFired();
-            if (_roundManager != null) RoundManagerHUD.Instance?.UpdateStatsUI(_roundManager.RoundTracker);
+            if (_roundManager != null)
+            {
+                _roundManager.OnShotFired();
+                RoundManagerHUD.Instance?.UpdateStatsUI(_roundManager.RoundTracker);
+            }
 
             _rocket.Launch(launchDirection, launchForce);
             if (AudioManager.Instance != null)
@@ -141,6 +144,7 @@ namespace RocketLauncher
         /// <summary>Rotate rocket sprite to face the given direction.</summary>
         public void RotateRocketToDirection(Vector2 direction)
         {
+            if (_rocket == null) return;
             float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90f;
             _rocket.transform.rotation = Quaternion.Euler(0f, 0f, angle);
         }

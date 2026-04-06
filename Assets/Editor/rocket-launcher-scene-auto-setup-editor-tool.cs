@@ -67,6 +67,10 @@ namespace RocketLauncher.Editor
         /// <summary>Shared scene setup: sprites, camera, environment, gameplay, UI, wiring.</summary>
         private static void RunCoreSetup()
         {
+            var tagManagerAsset = AssetDatabase.LoadMainAssetAtPath("ProjectSettings/TagManager.asset");
+            if (tagManagerAsset != null)
+                Undo.RegisterCompleteObjectUndo(tagManagerAsset, "Rocket Launcher Scene Setup");
+
             PreGenerateSprites();
 
             ClearScene();

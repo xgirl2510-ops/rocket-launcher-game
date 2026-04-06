@@ -167,6 +167,7 @@ namespace RocketLauncher
             var go = new GameObject("Obstacle");
             go.transform.position = new Vector3(position.x, position.y, 0f);
             go.tag = GameConstants.TagGround;
+            // Obstacles use Default layer (0). Physics2D matrix must allow Default↔Rocket (layer 8) collision.
             go.layer = GameConstants.DefaultLayer;
 
             float size = Random.Range(_obstacleMinSize, _obstacleMaxSize);
@@ -196,5 +197,13 @@ namespace RocketLauncher
             ClearObstacles();
         }
 
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (!gameObject.scene.isLoaded) return;
+            if (_spawnPoint == null) Debug.LogWarning("[ObstacleSpawner] _spawnPoint not assigned.", this);
+            if (_targetTransform == null) Debug.LogWarning("[ObstacleSpawner] _targetTransform not assigned.", this);
+        }
+#endif
     }
 }

@@ -72,9 +72,9 @@ namespace RocketLauncher
             else if (_targetHitClip != null) _oneShotSource.PlayOneShot(_targetHitClip);
         }
 
-        public void PlayStretch() { if (_stretchClip != null) _oneShotSource.PlayOneShot(_stretchClip); }
-        public void PlayClick() { if (_clickClip != null) _oneShotSource.PlayOneShot(_clickClip); }
-        public void PlayWin() { if (_winClip != null) _oneShotSource.PlayOneShot(_winClip); }
+        public void PlayStretch() { _oneShotSource.pitch = 1.0f; if (_stretchClip != null) _oneShotSource.PlayOneShot(_stretchClip); }
+        public void PlayClick() { _oneShotSource.pitch = 1.0f; if (_clickClip != null) _oneShotSource.PlayOneShot(_clickClip); }
+        public void PlayWin() { _oneShotSource.pitch = 1.0f; if (_winClip != null) _oneShotSource.PlayOneShot(_winClip); }
 
         public void StartThrust()
         {

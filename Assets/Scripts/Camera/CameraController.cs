@@ -230,7 +230,7 @@ namespace RocketLauncher
             float elapsed = 0f;
             while (elapsed < duration)
             {
-                elapsed += Time.deltaTime;
+                elapsed += Time.unscaledDeltaTime;
                 float t = Mathf.SmoothStep(0f, 1f, elapsed / duration);
                 SetCameraXY(Vector2.Lerp(from, to, t));
                 if (lerpOrtho) _camera.orthographicSize = Mathf.Lerp(orthoFrom, orthoTo, t);

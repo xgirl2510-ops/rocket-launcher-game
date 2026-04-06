@@ -11,10 +11,10 @@ namespace RocketLauncher
     /// </summary>
     public class ExplosionEffect : MonoBehaviour
     {
-        [SerializeField] private int _burstCount = 30;
-        [SerializeField] private float _particleLifetime = 0.6f;
-        [SerializeField] private float _startSpeed = 8f;
-        [SerializeField] private float _startSize = 0.3f;
+        private const int BurstCount = 30;
+        private const float ParticleLifetime = 0.6f;
+        private const float StartSpeed = 8f;
+        private const float StartSize = 0.3f;
 
         private ParticleSystem _ps;
 
@@ -49,15 +49,15 @@ namespace RocketLauncher
 
             _ps.Play();
 
-            Destroy(gameObject, _particleLifetime + 0.2f);
+            Destroy(gameObject, ParticleLifetime + 0.2f);
         }
 
         private void ConfigureParticleSystem(Color burstColor, Color fadeColor)
         {
             var main = _ps.main;
-            main.startLifetime = _particleLifetime;
-            main.startSpeed = _startSpeed;
-            main.startSize = _startSize;
+            main.startLifetime = ParticleLifetime;
+            main.startSpeed = StartSpeed;
+            main.startSize = StartSize;
             main.startColor = burstColor;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.maxParticles = 50;
@@ -67,7 +67,7 @@ namespace RocketLauncher
             var emission = _ps.emission;
             emission.rateOverTime = 0;
             emission.SetBursts(new ParticleSystem.Burst[] {
-                new ParticleSystem.Burst(0f, _burstCount)
+                new ParticleSystem.Burst(0f, BurstCount)
             });
 
             var shape = _ps.shape;

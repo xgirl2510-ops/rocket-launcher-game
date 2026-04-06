@@ -56,6 +56,9 @@ namespace RocketLauncher
 
         private void Start()
         {
+            if (_launchController == null) Debug.LogError("[RoundManager] _launchController is null.", this);
+            if (_spawnPoint == null) Debug.LogError("[RoundManager] _spawnPoint is null.", this);
+
             if (_rocket != null)
             {
                 _rocket.OnRocketLanded += HandleRocketMiss;
@@ -65,7 +68,7 @@ namespace RocketLauncher
             if (_cameraController != null)
                 _cameraController.OnIntroComplete += OnIntroDone;
             else
-                _launchController.EnableInput();
+                _launchController?.EnableInput();
         }
 
         /// <summary>Called by LaunchController after a shot is fired.</summary>

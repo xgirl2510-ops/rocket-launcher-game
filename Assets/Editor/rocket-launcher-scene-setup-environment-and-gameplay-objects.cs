@@ -106,7 +106,7 @@ namespace RocketLauncher.Editor
             var go = CreateEmpty("Rocket", parent);
             go.transform.position = RocketSpawnWorld;
             go.tag = "Player";
-            go.layer = LayerMask.NameToLayer("Rocket");
+            go.layer = 8; // Rocket layer — must match GameConstants/Physics2D matrix
 
             var rb = go.AddComponent<Rigidbody2D>();
             rb.bodyType = RigidbodyType2D.Kinematic;

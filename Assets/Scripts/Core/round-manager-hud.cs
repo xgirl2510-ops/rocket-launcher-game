@@ -104,8 +104,8 @@ namespace RocketLauncher
             float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
             float force = Mathf.Lerp(GameConstants.MinLaunchForce, GameConstants.MaxLaunchForce, normalizedForce);
 
-            _angleText.text = $"Angle: {angle:F1}\u00b0";
-            _forceText.text = $"Force: {force:F1}";
+            _angleText.SetText("Angle: {0:F1}\u00b0", angle);
+            _forceText.SetText("Force: {0:F1}", force);
         }
 
         public void UpdateStatsUI(GameRoundTracker tracker)
@@ -113,6 +113,16 @@ namespace RocketLauncher
             if (_statsText == null) return;
             _statsText.text = tracker.GetStatsText();
         }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (!gameObject.scene.isLoaded) return;
+            if (_winText == null) Debug.LogWarning("[RoundManagerHUD] _winText not assigned.", this);
+            if (_restartButton == null) Debug.LogWarning("[RoundManagerHUD] _restartButton not assigned.", this);
+            if (_roundManager == null) Debug.LogWarning("[RoundManagerHUD] _roundManager not assigned.", this);
+        }
+#endif
 
         private void OnDestroy()
         {
