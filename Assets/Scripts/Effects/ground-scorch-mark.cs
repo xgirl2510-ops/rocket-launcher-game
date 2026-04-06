@@ -13,10 +13,14 @@ namespace RocketLauncher
     /// </summary>
     public static class GroundScorch
     {
+        /// <summary>Per-crater positional data for ground-Y lookup.</summary>
         private struct CraterData
         {
+            /// <summary>World X position of crater center.</summary>
             public float X;
+            /// <summary>Horizontal width of the crater hole.</summary>
             public float Width;
+            /// <summary>Vertical depth of the crater hole.</summary>
             public float Depth;
         }
 
@@ -25,6 +29,15 @@ namespace RocketLauncher
         private static bool _groundPrepared;
 
         private const int MaskVariantCount = 8;
+
+        private const float SmallCraterHeightThreshold = 15f;
+        private const float MediumCraterHeightThreshold = 30f;
+        private const float SmallCraterMinScale = 0.8f;
+        private const float SmallCraterMaxScale = 1.2f;
+        private const float MediumCraterMinScale = 1.2f;
+        private const float MediumCraterMaxScale = 1.8f;
+        private const float LargeCraterMinScale = 1.8f;
+        private const float LargeCraterMaxScale = 2.5f;
         private static Sprite[] _maskVariants;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -51,11 +64,10 @@ namespace RocketLauncher
             _maskVariants = null;
         }
 
-        /// <summary>Find ground and enable mask interaction so SpriteMasks cut it.</summary>
-        private static void PrepareGround()
+        /// <summary>Enable mask interaction on ground so SpriteMasks cut it.</summary>
+        public static void PrepareGround(Transform ground)
         {
             if (_groundPrepared) return;
-            var ground = GameObject.Find(GameConstants.GroundObjectName);
             if (ground == null) return;
             var sr = ground.GetComponent<SpriteRenderer>();
             if (sr != null)
@@ -64,25 +76,37 @@ namespace RocketLauncher
         }
 
         /// <summary>Spawn a real crater hole in the ground. Size scales with max flight height.</summary>
-        public static void Spawn(Vector2 impactPosition, float maxHeight = 10f)
+        public static void Spawn(Vector2 impactPosition, float maxHeight = 10f, Transform ground = null)
         {
-            PrepareGround();
+            PrepareGround(ground);
             EnsureMaskVariants();
 
             float groundY = GameConstants.GroundTop;
-
-            float heightAboveGround = Mathf.Max(0f, maxHeight - groundY);
-            float scale;
-            if (heightAboveGround <= 15f)
-                scale = Random.Range(0.8f, 1.2f);
-            else if (heightAboveGround <= 30f)
-                scale = Random.Range(1.2f, 1.8f);
-            else
-                scale = Random.Range(1.8f, 2.5f);
-
+            float scale = CalculateCraterScale(maxHeight, groundY);
             float craterW = Random.Range(1.2f, 1.6f) * scale;
             float craterH = Random.Range(0.8f, 1.2f) * scale;
 
+            var parent = CreateCraterGameObject(impactPosition, groundY, craterW, craterH);
+
+            RocketDebris.SpawnDirtDebris(impactPosition, scale);
+
+            _craters.Add(new CraterData { X = impactPosition.x, Width = craterW, Depth = craterH });
+            _allCraters.Add(parent);
+        }
+
+        private static float CalculateCraterScale(float maxHeight, float groundY)
+        {
+            float heightAboveGround = Mathf.Max(0f, maxHeight - groundY);
+            if (heightAboveGround <= SmallCraterHeightThreshold)
+                return Random.Range(SmallCraterMinScale, SmallCraterMaxScale);
+            if (heightAboveGround <= MediumCraterHeightThreshold)
+                return Random.Range(MediumCraterMinScale, MediumCraterMaxScale);
+            return Random.Range(LargeCraterMinScale, LargeCraterMaxScale);
+        }
+
+        private static GameObject CreateCraterGameObject(Vector2 impactPosition, float groundY,
+            float craterW, float craterH)
+        {
             var parent = new GameObject("Crater");
             parent.transform.position = new Vector3(impactPosition.x, groundY, 0f);
 
@@ -106,10 +130,7 @@ namespace RocketLauncher
             mask.sprite = _maskVariants[Random.Range(0, MaskVariantCount)];
             mask.alphaCutoff = 0.5f;
 
-            RocketDebris.SpawnDirtDebris(impactPosition, scale);
-
-            _craters.Add(new CraterData { X = impactPosition.x, Width = craterW, Depth = craterH });
-            _allCraters.Add(parent);
+            return parent;
         }
 
         /// <summary>

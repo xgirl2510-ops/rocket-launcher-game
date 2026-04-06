@@ -31,6 +31,7 @@ namespace RocketLauncher
         private bool _isAutoPlaying;
         private readonly GameRoundTracker _roundTracker = new GameRoundTracker();
 
+        /// <summary>Per-round and cross-round statistics tracker.</summary>
         public GameRoundTracker RoundTracker => _roundTracker;
 
         private const int MissesBeforeHints = 5;

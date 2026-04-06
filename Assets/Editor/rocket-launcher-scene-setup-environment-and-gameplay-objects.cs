@@ -125,10 +125,13 @@ namespace RocketLauncher.Editor
             go.AddComponent<RocketTrail>();
             go.AddComponent<ImpactEffectsHandler>();
 
-            // Wire ImpactEffectsHandler._rocket via SerializedObject
+            // Wire ImpactEffectsHandler._rocket and _ground via SerializedObject
             var impactHandler = go.GetComponent<ImpactEffectsHandler>();
             var ihSo = new SerializedObject(impactHandler);
             ihSo.FindProperty("_rocket").objectReferenceValue = rocketComp;
+            var groundGo = GameObject.Find("Ground");
+            if (groundGo != null)
+                ihSo.FindProperty("_ground").objectReferenceValue = groundGo.transform;
             ihSo.ApplyModifiedProperties();
 
             CreateSprite("Body", go,

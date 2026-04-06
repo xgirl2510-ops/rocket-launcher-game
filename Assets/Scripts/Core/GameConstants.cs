@@ -18,5 +18,8 @@ namespace RocketLauncher
         public const int DefaultLayer = 0;
         public const string SortingLayerGameplay = "Gameplay";
         public const int RocketLayer = 8;
+
+        /// <summary>Angle offset to align sprites (which point UP) to velocity direction.</summary>
+        public const float SpriteAngleOffset = -90f;
     }
 }

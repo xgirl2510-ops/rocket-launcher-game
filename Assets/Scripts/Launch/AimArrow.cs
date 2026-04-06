@@ -29,12 +29,14 @@ namespace RocketLauncher
             Hide();
         }
 
+        /// <summary>Make the aim arrow visible.</summary>
         public void Show()
         {
             if (_spriteRenderer != null)
                 _spriteRenderer.enabled = true;
         }
 
+        /// <summary>Hide the aim arrow.</summary>
         public void Hide()
         {
             if (_spriteRenderer != null)

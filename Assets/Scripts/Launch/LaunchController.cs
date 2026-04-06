@@ -144,15 +144,17 @@ namespace RocketLauncher
         /// <summary>Rotate rocket sprite to face the given direction.</summary>
         public void RotateRocketToDirection(Vector2 direction)
         {
-            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90f;
+            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg + GameConstants.SpriteAngleOffset;
             _rocket.transform.rotation = Quaternion.Euler(0f, 0f, angle);
         }
 
+        /// <summary>Allow slingshot input (called after intro pan or reload).</summary>
         public void EnableInput()
         {
             _inputEnabled = true;
         }
 
+        /// <summary>Block slingshot input (called during flight or camera pan).</summary>
         public void DisableInput()
         {
             _inputEnabled = false;

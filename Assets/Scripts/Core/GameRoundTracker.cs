@@ -12,8 +12,11 @@ namespace RocketLauncher
         private int _roundNumber = 1;
         private int _bestScore;
 
+        /// <summary>Number of shots fired in the current round.</summary>
         public int RoundShots => _roundShots;
+        /// <summary>Current round number (starts at 1).</summary>
         public int RoundNumber => _roundNumber;
+        /// <summary>Best (lowest) shot count across all rounds, 0 if none.</summary>
         public int BestScore => _bestScore;
 
         /// <summary>Load persisted best score from PlayerPrefs.</summary>

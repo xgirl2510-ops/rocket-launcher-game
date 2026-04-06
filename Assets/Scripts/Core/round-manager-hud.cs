@@ -11,6 +11,7 @@ namespace RocketLauncher
     [DisallowMultipleComponent]
     public class RoundManagerHUD : MonoBehaviour
     {
+        /// <summary>Singleton instance for RoundManager to access HUD without circular refs.</summary>
         public static RoundManagerHUD Instance { get; private set; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -65,18 +66,21 @@ namespace RocketLauncher
         private void OnAutoPlayClicked() => _roundManager?.HandleAutoPlay();
         private void OnLookTargetClicked() => _roundManager?.HandleLookTarget();
 
+        /// <summary>Show victory text and restart button.</summary>
         public void ShowWinUI()
         {
             if (_winText != null) _winText.gameObject.SetActive(true);
             if (_restartButton != null) _restartButton.gameObject.SetActive(true);
         }
 
+        /// <summary>Hide victory text and restart button.</summary>
         public void HideWinUI()
         {
             if (_winText != null) _winText.gameObject.SetActive(false);
             if (_restartButton != null) _restartButton.gameObject.SetActive(false);
         }
 
+        /// <summary>Show auto-play button, angle, and force hint labels.</summary>
         public void ShowHints()
         {
             if (_autoPlayButton != null) _autoPlayButton.gameObject.SetActive(true);
@@ -84,6 +88,7 @@ namespace RocketLauncher
             if (_forceText != null) _forceText.gameObject.SetActive(true);
         }
 
+        /// <summary>Hide auto-play button, angle, and force hint labels.</summary>
         public void HideHints()
         {
             if (_autoPlayButton != null) _autoPlayButton.gameObject.SetActive(false);
@@ -91,11 +96,13 @@ namespace RocketLauncher
             if (_forceText != null) _forceText.gameObject.SetActive(false);
         }
 
+        /// <summary>Hide auto-play button only (hints stay visible during drag).</summary>
         public void HideAutoPlayButton()
         {
             if (_autoPlayButton != null) _autoPlayButton.gameObject.SetActive(false);
         }
 
+        /// <summary>Update angle and force text labels from current aim direction.</summary>
         public void UpdateHintTexts(Vector2 direction, float normalizedForce)
         {
             if (_angleText == null || _forceText == null) return;
@@ -108,6 +115,7 @@ namespace RocketLauncher
             _forceText.SetText("Force: {0:F1}", force);
         }
 
+        /// <summary>Refresh the stats text from round tracker data.</summary>
         public void UpdateStatsUI(GameRoundTracker tracker)
         {
             if (_statsText == null) return;

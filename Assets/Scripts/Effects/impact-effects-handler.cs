@@ -9,6 +9,7 @@ namespace RocketLauncher
     public class ImpactEffectsHandler : MonoBehaviour
     {
         [SerializeField] private Rocket _rocket;
+        [SerializeField] private Transform _ground;
 
         private void Start()
         {
@@ -37,7 +38,7 @@ namespace RocketLauncher
                 RocketDebris.SpawnTargetDebris(position);
 
             if (!isHit && position.y < GameConstants.GroundTop + GameConstants.CraterSpawnHeightThreshold)
-                GroundScorch.Spawn(position, maxHeight);
+                GroundScorch.Spawn(position, maxHeight, _ground);
         }
     }
 }

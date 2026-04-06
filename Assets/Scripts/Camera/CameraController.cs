@@ -11,6 +11,7 @@ namespace RocketLauncher
     /// </summary>
     public class CameraController : MonoBehaviour
     {
+        /// <summary>Possible camera behavior states.</summary>
         public enum CameraState { Intro, Idle, Following, Returning, LookingAtTarget }
 
         [Header("References")]
@@ -41,7 +42,9 @@ namespace RocketLauncher
         [SerializeField] private float _lookTargetPanDuration = 1.0f;
         [SerializeField] private float _lookTargetPauseDuration = 2f;
 
+        /// <summary>Fired when the intro pan finishes and camera is idle.</summary>
         public event Action OnIntroComplete;
+        /// <summary>Fired when the look-at-target sequence completes and camera returns to idle.</summary>
         public event Action OnLookTargetComplete;
 
         private CameraState _currentState;

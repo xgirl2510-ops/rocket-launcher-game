@@ -29,6 +29,14 @@ namespace RocketLauncher
         [SerializeField] private float _spawnMinY = -4f;
         [SerializeField] private float _spawnMaxY = 12f;
 
+        private const int MaxSpawnAttemptsMultiplier = 20;
+        private const float VelocityEstimateScale = 1.5f;
+        private const float MinVelocitySquared = 100f;
+        private const float FallbackAngleDeg = 60f;
+        private const float TimeOfFlightScale = 1.2f;
+        private const float OverlapSeparationScale = 1.2f;
+        private const float MinHorizontalSpeed = 0.1f;
+
         private readonly List<GameObject> _obstacles = new List<GameObject>();
         private Vector2[] _safeTrajectory;
         private Vector2 _lastLaunchDir;
@@ -64,30 +72,8 @@ namespace RocketLauncher
         {
             float g = Physics2D.gravity.magnitude;
             Vector2 diff = target - start;
-            float dx = diff.x;
-            float dy = diff.y;
 
-            // Compute an initial speed estimate, then clamp to launch force range
-            // BEFORE solving for the angle so theta is correct for the actual speed.
-            float vSquared = g * (dy + Mathf.Sqrt(dx * dx + dy * dy)) * 1.5f;
-            float v = Mathf.Sqrt(Mathf.Max(vSquared, 100f));
-            float vClamped = Mathf.Clamp(v, GameConstants.MinLaunchForce, GameConstants.MaxLaunchForce);
-
-            // Solve launch angle using clamped velocity
-            float vc2 = vClamped * vClamped;
-            float vc4 = vc2 * vc2;
-            float discriminant = vc4 - g * (g * dx * dx + 2f * dy * vc2);
-
-            float theta;
-            if (discriminant < 0f)
-            {
-                theta = 60f * Mathf.Deg2Rad;
-            }
-            else
-            {
-                // High-arc solution: atan2(v^2 + sqrt(disc), g*dx)
-                theta = Mathf.Atan2(vc2 + Mathf.Sqrt(discriminant), g * dx);
-            }
+            SolveOptimalAngle(diff, g, out float vClamped, out float theta);
 
             float vx = vClamped * Mathf.Cos(theta);
             float vy = vClamped * Mathf.Sin(theta);
@@ -95,9 +81,41 @@ namespace RocketLauncher
             _lastLaunchDir = new Vector2(vx, vy).normalized;
             _lastLaunchForce = vClamped;
 
-            // Time of flight: use actual projectile formula, capped to prevent degenerate arcs
+            return SampleTrajectoryPoints(start, vx, vy, g, diff.x);
+        }
+
+        /// <summary>Solve launch angle and clamped velocity for a high-arc trajectory.</summary>
+        private void SolveOptimalAngle(Vector2 diff, float g, out float vClamped, out float theta)
+        {
+            float dx = diff.x;
+            float dy = diff.y;
+
+            // Compute initial speed estimate, clamp to launch force range
+            // BEFORE solving for angle so theta is correct for the actual speed.
+            float vSquared = g * (dy + Mathf.Sqrt(dx * dx + dy * dy)) * VelocityEstimateScale;
+            float v = Mathf.Sqrt(Mathf.Max(vSquared, MinVelocitySquared));
+            vClamped = Mathf.Clamp(v, GameConstants.MinLaunchForce, GameConstants.MaxLaunchForce);
+
+            float vc2 = vClamped * vClamped;
+            float vc4 = vc2 * vc2;
+            float discriminant = vc4 - g * (g * dx * dx + 2f * dy * vc2);
+
+            if (discriminant < 0f)
+            {
+                theta = FallbackAngleDeg * Mathf.Deg2Rad;
+            }
+            else
+            {
+                // High-arc solution: atan2(v^2 + sqrt(disc), g*dx)
+                theta = Mathf.Atan2(vc2 + Mathf.Sqrt(discriminant), g * dx);
+            }
+        }
+
+        /// <summary>Sample points along a ballistic arc for safe-zone checking.</summary>
+        private Vector2[] SampleTrajectoryPoints(Vector2 start, float vx, float vy, float g, float dx)
+        {
             float timeOfFlight = (vy + Mathf.Sqrt(vy * vy + 2f * g * Mathf.Max(0f, start.y - GameConstants.GroundTop))) / g;
-            float totalTime = Mathf.Min(Mathf.Abs(dx) / Mathf.Max(Mathf.Abs(vx), 0.1f), timeOfFlight * 1.2f);
+            float totalTime = Mathf.Min(Mathf.Abs(dx) / Mathf.Max(Mathf.Abs(vx), MinHorizontalSpeed), timeOfFlight * TimeOfFlightScale);
 
             Vector2[] points = new Vector2[_trajectorySteps + 1];
             for (int i = 0; i <= _trajectorySteps; i++)
@@ -118,35 +136,38 @@ namespace RocketLauncher
             if (minX >= maxX) return;
 
             int spawned = 0;
-            int maxAttempts = _obstacleCount * 20;
+            int maxAttempts = _obstacleCount * MaxSpawnAttemptsMultiplier;
             int attempts = 0;
 
             while (spawned < _obstacleCount && attempts < maxAttempts)
             {
                 attempts++;
-
-                float x = Random.Range(minX, maxX);
-                float y = Random.Range(_spawnMinY, _spawnMaxY);
-                Vector2 candidate = new Vector2(x, y);
-
-                if (IsInSafeZone(candidate)) continue;
-
-                bool overlaps = false;
-                float minSepSqr = _obstacleMaxSize * 1.2f;
-                minSepSqr *= minSepSqr;
-                foreach (var obs in _obstacles)
-                {
-                    if (((Vector2)obs.transform.position - candidate).sqrMagnitude < minSepSqr)
-                    {
-                        overlaps = true;
-                        break;
-                    }
-                }
-                if (overlaps) continue;
-
+                Vector2 candidate = GenerateRandomPosition(minX, maxX);
+                if (!IsPositionValid(candidate)) continue;
                 CreateObstacle(candidate);
                 spawned++;
             }
+        }
+
+        private Vector2 GenerateRandomPosition(float minX, float maxX)
+        {
+            float x = Random.Range(minX, maxX);
+            float y = Random.Range(_spawnMinY, _spawnMaxY);
+            return new Vector2(x, y);
+        }
+
+        private bool IsPositionValid(Vector2 candidate)
+        {
+            if (IsInSafeZone(candidate)) return false;
+
+            float minSepSqr = _obstacleMaxSize * OverlapSeparationScale;
+            minSepSqr *= minSepSqr;
+            foreach (var obs in _obstacles)
+            {
+                if (((Vector2)obs.transform.position - candidate).sqrMagnitude < minSepSqr)
+                    return false;
+            }
+            return true;
         }
 
         private bool IsInSafeZone(Vector2 point)

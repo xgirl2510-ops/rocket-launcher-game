@@ -55,6 +55,23 @@ namespace RocketLauncher
 
             var ps = trailGO.AddComponent<ParticleSystem>();
 
+            ConfigureTrailMain(ps);
+            ConfigureTrailEmission(ps);
+            ConfigureTrailShape(ps);
+            ConfigureTrailSizeOverLifetime(ps);
+            ConfigureTrailColorOverLifetime(ps);
+
+            var renderer = ps.GetComponent<ParticleSystemRenderer>();
+            renderer.material = RuntimeSpriteFactory.GetParticleMaterial();
+            renderer.sortingLayerName = "Projectile";
+            renderer.sortingOrder = -1;
+
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            return ps;
+        }
+
+        private void ConfigureTrailMain(ParticleSystem ps)
+        {
             var main = ps.main;
             main.startLifetime = _particleLifetime;
             main.startSpeed = 0.5f;
@@ -63,20 +80,32 @@ namespace RocketLauncher
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.maxParticles = 200;
             main.playOnAwake = false;
+        }
 
+        private void ConfigureTrailEmission(ParticleSystem ps)
+        {
             var emission = ps.emission;
             emission.rateOverTime = _emissionRate;
+        }
 
+        private static void ConfigureTrailShape(ParticleSystem ps)
+        {
             var shape = ps.shape;
             shape.shapeType = ParticleSystemShapeType.Cone;
             shape.angle = 15f;
             shape.radius = 0.05f;
             shape.rotation = new Vector3(-90f, 0f, 0f);
+        }
 
+        private static void ConfigureTrailSizeOverLifetime(ParticleSystem ps)
+        {
             var sizeOverLifetime = ps.sizeOverLifetime;
             sizeOverLifetime.enabled = true;
             sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.1f));
+        }
 
+        private static void ConfigureTrailColorOverLifetime(ParticleSystem ps)
+        {
             var colorOverLifetime = ps.colorOverLifetime;
             colorOverLifetime.enabled = true;
             var gradient = new Gradient();
@@ -93,14 +122,6 @@ namespace RocketLauncher
                 }
             );
             colorOverLifetime.color = gradient;
-
-            var renderer = ps.GetComponent<ParticleSystemRenderer>();
-            renderer.material = RuntimeSpriteFactory.GetParticleMaterial();
-            renderer.sortingLayerName = "Projectile";
-            renderer.sortingOrder = -1;
-
-            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-            return ps;
         }
     }
 }

@@ -41,6 +41,9 @@ namespace RocketLauncher
         }
 
         private const float Gravity = 12f;
+        private const float MinDebrisAngle = 15f;
+        private const float MaxDebrisAngle = 165f;
+        private const float DebrisLifetime = 2f;
         private Vector2 _velocity;
         private float _angularSpeed;
         private float _groundYOffset;
@@ -87,7 +90,7 @@ namespace RocketLauncher
 
                 var debris = go.AddComponent<RocketDebris>();
 
-                float angle = Random.Range(15f, 165f) * Mathf.Deg2Rad;
+                float angle = Random.Range(MinDebrisAngle, MaxDebrisAngle) * Mathf.Deg2Rad;
                 float speed = Random.Range(minSpeed, maxSpeed);
                 debris._velocity = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * speed;
                 debris._angularSpeed = Random.Range(-360f, 360f);
@@ -121,7 +124,7 @@ namespace RocketLauncher
             {
                 transform.position = new Vector3(transform.position.x, groundY, 0f);
                 _grounded = true;
-                Destroy(gameObject, 2f);
+                Destroy(gameObject, DebrisLifetime);
             }
         }
 

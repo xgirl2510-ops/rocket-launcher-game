@@ -12,11 +12,16 @@ namespace RocketLauncher
     {
         private const string GroundTag = GameConstants.TagGround;
         private const string TargetTag = GameConstants.TagTarget;
+        private const float MinVelocitySqr = 0.01f;
 
+        /// <summary>Fired when the rocket is launched via impulse.</summary>
         public event Action OnRocketLaunched;
+        /// <summary>Fired when the rocket hits ground (miss).</summary>
         public event Action OnRocketLanded;
+        /// <summary>Fired when the rocket hits the target (win).</summary>
         public event Action OnTargetHit;
-        public event Action<Vector2, bool, float> OnImpact; // position, isHit, maxHeight
+        /// <summary>Fired on any impact with position, hit flag, and max height reached.</summary>
+        public event Action<Vector2, bool, float> OnImpact;
 
         private Rigidbody2D _rb;
         private bool _isFlying;
@@ -39,7 +44,7 @@ namespace RocketLauncher
         /// </summary>
         public void Launch(Vector2 direction, float force)
         {
-            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90f;
+            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg + GameConstants.SpriteAngleOffset;
             transform.rotation = Quaternion.Euler(0f, 0f, angle);
 
             _rb.bodyType = RigidbodyType2D.Dynamic;
@@ -85,9 +90,9 @@ namespace RocketLauncher
         private void RotateToVelocity()
         {
             Vector2 vel = _rb.linearVelocity;
-            if (vel.sqrMagnitude < 0.01f) return;
+            if (vel.sqrMagnitude < MinVelocitySqr) return;
 
-            float angle = Mathf.Atan2(vel.y, vel.x) * Mathf.Rad2Deg - 90f;
+            float angle = Mathf.Atan2(vel.y, vel.x) * Mathf.Rad2Deg + GameConstants.SpriteAngleOffset;
             _rb.MoveRotation(angle);
         }
 

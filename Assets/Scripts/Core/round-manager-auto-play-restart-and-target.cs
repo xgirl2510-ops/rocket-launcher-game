@@ -8,6 +8,7 @@ namespace RocketLauncher
     /// </summary>
     public partial class RoundManager
     {
+        private const float MinDirectionSqr = 0.01f;
         /// <summary>Restart button clicked -- randomize target, intro pan, then enable input.</summary>
         public void HandleRestart()
         {
@@ -22,13 +23,22 @@ namespace RocketLauncher
             RoundManagerHUD.Instance?.HideWinUI();
             RoundManagerHUD.Instance?.HideHints();
 
+            ResetGameState();
+            PrepareNewRound();
+        }
+
+        private void ResetGameState()
+        {
             RocketDebris.ClearAll();
             GroundScorch.ClearAll();
             _rocket.gameObject.SetActive(true);
             _rocket.ResetToPosition(_spawnPoint.position);
             if (_targetTransform != null) _targetTransform.gameObject.SetActive(true);
             _missCount = 0;
+        }
 
+        private void PrepareNewRound()
+        {
             _roundTracker.NewRound();
             RoundManagerHUD.Instance?.UpdateStatsUI(_roundTracker);
 
@@ -59,7 +69,7 @@ namespace RocketLauncher
 
             Vector2 dir = _obstacleSpawner.SafeLaunchDirection;
             float force = _obstacleSpawner.SafeLaunchForce;
-            if (dir.sqrMagnitude < 0.01f) return;
+            if (dir.sqrMagnitude < MinDirectionSqr) return;
 
             RoundManagerHUD.Instance?.HideAutoPlayButton();
             RoundManagerHUD.Instance?.HideHints();

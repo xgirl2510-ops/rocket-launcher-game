@@ -54,6 +54,20 @@ namespace RocketLauncher
 
         private void ConfigureParticleSystem(Color burstColor, Color fadeColor)
         {
+            ConfigureExplosionMain(burstColor);
+            ConfigureExplosionEmission();
+            ConfigureExplosionShape();
+            ConfigureExplosionSizeOverLifetime();
+            ConfigureExplosionColorOverLifetime(burstColor, fadeColor);
+
+            var renderer = _ps.GetComponent<ParticleSystemRenderer>();
+            renderer.material = RuntimeSpriteFactory.GetParticleMaterial();
+            renderer.sortingLayerName = "Projectile";
+            renderer.sortingOrder = 10;
+        }
+
+        private void ConfigureExplosionMain(Color burstColor)
+        {
             var main = _ps.main;
             main.startLifetime = ParticleLifetime;
             main.startSpeed = StartSpeed;
@@ -63,22 +77,34 @@ namespace RocketLauncher
             main.maxParticles = 50;
             main.playOnAwake = false;
             main.loop = false;
+        }
 
+        private void ConfigureExplosionEmission()
+        {
             var emission = _ps.emission;
             emission.rateOverTime = 0;
             emission.SetBursts(new ParticleSystem.Burst[] {
                 new ParticleSystem.Burst(0f, BurstCount)
             });
+        }
 
+        private void ConfigureExplosionShape()
+        {
             var shape = _ps.shape;
             shape.shapeType = ParticleSystemShapeType.Circle;
             shape.radius = 0.1f;
+        }
 
+        private void ConfigureExplosionSizeOverLifetime()
+        {
             var sizeOverLifetime = _ps.sizeOverLifetime;
             sizeOverLifetime.enabled = true;
             sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(
                 1f, AnimationCurve.Linear(0f, 1f, 1f, 0f));
+        }
 
+        private void ConfigureExplosionColorOverLifetime(Color burstColor, Color fadeColor)
+        {
             var colorOverLifetime = _ps.colorOverLifetime;
             colorOverLifetime.enabled = true;
             var gradient = new Gradient();
@@ -93,11 +119,6 @@ namespace RocketLauncher
                 }
             );
             colorOverLifetime.color = gradient;
-
-            var renderer = _ps.GetComponent<ParticleSystemRenderer>();
-            renderer.material = RuntimeSpriteFactory.GetParticleMaterial();
-            renderer.sortingLayerName = "Projectile";
-            renderer.sortingOrder = 10;
         }
     }
 }
