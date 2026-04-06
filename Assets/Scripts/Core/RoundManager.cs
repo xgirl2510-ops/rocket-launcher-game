@@ -68,7 +68,7 @@ namespace RocketLauncher
             if (_cameraController != null)
                 _cameraController.OnIntroComplete += OnIntroDone;
             else
-                _launchController?.EnableInput();
+                _launchController.EnableInput();
         }
 
         /// <summary>Called by LaunchController after a shot is fired.</summary>

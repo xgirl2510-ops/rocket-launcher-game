@@ -17,5 +17,6 @@ namespace RocketLauncher
         public const string GroundObjectName = "Ground";
         public const int DefaultLayer = 0;
         public const string SortingLayerGameplay = "Gameplay";
+        public const int RocketLayer = 8;
     }
 }
