@@ -16,7 +16,6 @@ namespace RocketLauncher.Editor
         // Step 1: Camera defines visible area
         private const float CamY         = 2f;
         private const float CamOrthoSize = 9f;
-        private static readonly float CamBottom = CamY - CamOrthoSize;
         private static readonly float CamTop    = CamY + CamOrthoSize;
 
         // Step 1b: Camera defines visible X range (iPhone 15 Pro Max aspect 19.5:9)
@@ -122,8 +121,15 @@ namespace RocketLauncher.Editor
             col.radius = 0.15f;
             col.offset = new Vector2(0f, 0.5f);
 
-            go.AddComponent<Rocket>();
+            var rocketComp = go.AddComponent<Rocket>();
             go.AddComponent<RocketTrail>();
+            go.AddComponent<ImpactEffectsHandler>();
+
+            // Wire ImpactEffectsHandler._rocket via SerializedObject
+            var impactHandler = go.GetComponent<ImpactEffectsHandler>();
+            var ihSo = new SerializedObject(impactHandler);
+            ihSo.FindProperty("_rocket").objectReferenceValue = rocketComp;
+            ihSo.ApplyModifiedProperties();
 
             CreateSprite("Body", go,
                 Vector3.zero, new Vector3(0.3f, 0.8f, 1f),

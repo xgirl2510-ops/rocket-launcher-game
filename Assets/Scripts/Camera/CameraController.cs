@@ -67,6 +67,8 @@ namespace RocketLauncher
 #if UNITY_EDITOR
         private void OnValidate()
         {
+            if (!gameObject.scene.isLoaded) return;
+
             if (_rocket == null) Debug.LogWarning("[CameraController] _rocket not assigned.", this);
             if (_vehicleTransform == null) Debug.LogWarning("[CameraController] _vehicleTransform not assigned.", this);
             if (_targetTransform == null) Debug.LogWarning("[CameraController] _targetTransform not assigned.", this);

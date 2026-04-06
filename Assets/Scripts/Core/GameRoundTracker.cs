@@ -6,6 +6,8 @@ namespace RocketLauncher
     /// </summary>
     public class GameRoundTracker
     {
+        private const string BestScoreKey = "RocketLauncher_BestScore";
+
         private int _roundShots;
         private int _roundNumber = 1;
         private int _bestScore;
@@ -13,6 +15,9 @@ namespace RocketLauncher
         public int RoundShots => _roundShots;
         public int RoundNumber => _roundNumber;
         public int BestScore => _bestScore;
+
+        /// <summary>Load persisted best score from PlayerPrefs.</summary>
+        public void LoadBestScore() => _bestScore = UnityEngine.PlayerPrefs.GetInt(BestScoreKey, 0);
 
         /// <summary>Increment shot counter for current round.</summary>
         public void IncrementShots() => _roundShots++;
@@ -27,9 +32,11 @@ namespace RocketLauncher
         /// <summary>Update best score if current round is better. Returns true if best was updated.</summary>
         public bool TryUpdateBest(int shots)
         {
+            if (shots <= 0) return false;
             if (_bestScore == 0 || shots < _bestScore)
             {
                 _bestScore = shots;
+                UnityEngine.PlayerPrefs.SetInt(BestScoreKey, _bestScore);
                 return true;
             }
             return false;

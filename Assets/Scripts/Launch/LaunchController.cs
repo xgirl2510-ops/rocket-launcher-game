@@ -30,11 +30,14 @@ namespace RocketLauncher
         private void Awake()
         {
             _camera = Camera.main;
+            if (_camera == null) Debug.LogError("[LaunchController] No main camera found.", this);
         }
 
 #if UNITY_EDITOR
         private void OnValidate()
         {
+            if (!gameObject.scene.isLoaded) return;
+
             if (_rocket == null) Debug.LogWarning("[LaunchController] _rocket not assigned.", this);
             if (_spawnPoint == null) Debug.LogWarning("[LaunchController] _spawnPoint not assigned.", this);
             if (_roundManager == null) Debug.LogWarning("[LaunchController] _roundManager not assigned.", this);
@@ -98,8 +101,8 @@ namespace RocketLauncher
 
             float launchForce = Mathf.Lerp(GameConstants.MinLaunchForce, GameConstants.MaxLaunchForce, normalizedForce);
 
-            _roundManager.OnShotFired();
-            RoundManagerHUD.Instance?.UpdateStatsUI(_roundManager.RoundTracker);
+            _roundManager?.OnShotFired();
+            if (_roundManager != null) RoundManagerHUD.Instance?.UpdateStatsUI(_roundManager.RoundTracker);
 
             _rocket.Launch(launchDirection, launchForce);
             if (AudioManager.Instance != null)

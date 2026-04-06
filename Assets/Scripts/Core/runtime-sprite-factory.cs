@@ -35,7 +35,7 @@ namespace RocketLauncher
 
             var tex = new Texture2D(4, 4);
             var pixels = new Color[16];
-            for (int i = 0; i < 16; i++) pixels[i] = Color.white;
+            System.Array.Fill(pixels, Color.white);
             tex.SetPixels(pixels);
             tex.Apply();
             tex.filterMode = FilterMode.Point;
@@ -54,7 +54,7 @@ namespace RocketLauncher
             {
                 Debug.LogError("[RuntimeSpriteFactory] Sprites/Default shader not found. " +
                     "Ensure it is in Project Settings > Graphics > Always Included Shaders.");
-                shader = Shader.Find("Hidden/InternalErrorShader");
+                shader = Shader.Find("UI/Default");
             }
 
             _particleMaterial = new Material(shader);

@@ -36,6 +36,7 @@ namespace RocketLauncher
 
             if (_cameraController != null)
             {
+                // Defensive: guard against restart during intro animation before OnIntroDone fires
                 _cameraController.OnIntroComplete -= OnIntroDone;
                 _cameraController.OnIntroComplete += OnIntroDone;
                 _cameraController.PlayIntro();
@@ -61,8 +62,11 @@ namespace RocketLauncher
             if (dir.sqrMagnitude < 0.01f) return;
 
             RoundManagerHUD.Instance?.HideAutoPlayButton();
+            RoundManagerHUD.Instance?.HideHints();
 
             _isAutoPlaying = true;
+            _rocket.gameObject.SetActive(true);
+            _rocket.ResetToPosition(_spawnPoint.position);
             _launchController.RotateRocketToDirection(dir);
             _rocket.Launch(dir, force);
             if (AudioManager.Instance != null)
@@ -112,6 +116,9 @@ namespace RocketLauncher
         private void ReloadAfterAutoPlay()
         {
             _isAutoPlaying = false;
+
+            _roundTracker.NewRound();
+            RoundManagerHUD.Instance?.UpdateStatsUI(_roundTracker);
 
             if (_cameraController != null)
                 _cameraController.ReturnToVehicle();

@@ -10,13 +10,13 @@ namespace RocketLauncher
     /// </summary>
     public class Rocket : MonoBehaviour
     {
-        [Header("Tags")]
-        [SerializeField] private string _groundTag = GameConstants.TagGround;
-        [SerializeField] private string _targetTag = GameConstants.TagTarget;
+        private const string GroundTag = GameConstants.TagGround;
+        private const string TargetTag = GameConstants.TagTarget;
 
         public event Action OnRocketLaunched;
         public event Action OnRocketLanded;
         public event Action OnTargetHit;
+        public event Action<Vector2, bool, float> OnImpact; // position, isHit, maxHeight
 
         private Rigidbody2D _rb;
         private bool _isFlying;
@@ -94,18 +94,14 @@ namespace RocketLauncher
         private void OnCollisionEnter2D(Collision2D collision)
         {
             if (!_isFlying) return;
-            if (!collision.gameObject.CompareTag(_groundTag)) return;
+            if (!collision.gameObject.CompareTag(GroundTag)) return;
 
             _isFlying = false;
             _rb.linearVelocity = Vector2.zero;
             _rb.angularVelocity = 0f;
 
             if (_trail != null) _trail.StopTrail();
-            ExplosionEffect.Spawn(transform.position, false);
-            RocketDebris.Spawn(transform.position);
-
-            if (transform.position.y < GameConstants.GroundTop + GameConstants.CraterSpawnHeightThreshold)
-                GroundScorch.Spawn(transform.position, _maxHeight);
+            OnImpact?.Invoke(transform.position, false, _maxHeight);
             SetSpritesVisible(false);
 
             OnRocketLanded?.Invoke();
@@ -114,17 +110,14 @@ namespace RocketLauncher
         private void OnTriggerEnter2D(Collider2D other)
         {
             if (!_isFlying) return;
-            if (!other.CompareTag(_targetTag)) return;
+            if (!other.CompareTag(TargetTag)) return;
 
             _isFlying = false;
             _rb.linearVelocity = Vector2.zero;
             _rb.angularVelocity = 0f;
 
             if (_trail != null) _trail.StopTrail();
-            ExplosionEffect.Spawn(transform.position, true);
-            RocketDebris.Spawn(transform.position);
-
-            RocketDebris.SpawnTargetDebris(other.transform.position);
+            OnImpact?.Invoke(transform.position, true, _maxHeight);
             other.gameObject.SetActive(false);
 
             SetSpritesVisible(false);

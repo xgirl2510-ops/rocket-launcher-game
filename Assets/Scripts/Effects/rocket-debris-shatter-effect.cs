@@ -121,6 +121,7 @@ namespace RocketLauncher
             {
                 transform.position = new Vector3(transform.position.x, groundY, 0f);
                 _grounded = true;
+                Destroy(gameObject, 2f);
             }
         }
 

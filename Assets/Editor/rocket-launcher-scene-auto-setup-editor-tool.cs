@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -40,9 +41,18 @@ namespace RocketLauncher.Editor
             string tmpSettingsPath = "Assets/TextMesh Pro/Resources/TMP Settings.asset";
             if (!System.IO.File.Exists(tmpSettingsPath))
             {
-                var importMethod = typeof(TMPro.TMP_PackageUtilities).GetMethod(
-                    "ImportProjectResourcesMenu", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
-                importMethod?.Invoke(null, null);
+                // TMP_PackageUtilities was removed in Unity 6 — use reflection to stay compatible
+                var utilType = System.Type.GetType("TMPro.TMP_PackageUtilities, Unity.TextMeshPro.Editor");
+                if (utilType != null)
+                {
+                    var importMethod = utilType.GetMethod(
+                        "ImportProjectResourcesMenu", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+                    importMethod?.Invoke(null, null);
+                }
+                else
+                {
+                    Debug.LogWarning("[SceneSetupTool] TMP_PackageUtilities not found — TMP essentials may need manual import via Window > TextMeshPro > Import TMP Essential Resources");
+                }
             }
 
             RunCoreSetup();
@@ -100,8 +110,11 @@ namespace RocketLauncher.Editor
             var boomClip   = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/rocket-boom.mp3");
 
             if (launchClip != null) so.FindProperty("_launchClip").objectReferenceValue = launchClip;
+            else Debug.LogWarning("[SceneSetupTool] Audio clip not found: Assets/Audio/rocket-start.mp3");
             if (thrustClip != null) so.FindProperty("_thrustClip").objectReferenceValue = thrustClip;
+            else Debug.LogWarning("[SceneSetupTool] Audio clip not found: Assets/Audio/rocket-flight.mp3");
             if (boomClip != null)   so.FindProperty("_boomClip").objectReferenceValue = boomClip;
+            else Debug.LogWarning("[SceneSetupTool] Audio clip not found: Assets/Audio/rocket-boom.mp3");
             so.ApplyModifiedProperties();
 
             Undo.RegisterCreatedObjectUndo(go, "Create AudioManager");
@@ -291,9 +304,18 @@ namespace RocketLauncher.Editor
             tm.ApplyModifiedProperties();
         }
 
+        private static readonly Dictionary<string, int> SortingLayerIDs = new()
+        {
+            { "Background",  100 },
+            { "Environment", 200 },
+            { "Gameplay",    300 },
+            { "Projectile",  400 },
+        };
+
         private static void SetupSortingLayers()
         {
             var tm     = GetTagManager();
+            // Note: m_SortingLayers is an internal Unity API — may change in future Unity versions
             var layers = tm.FindProperty("m_SortingLayers");
             foreach (string name in new[] { "Background", "Environment", "Gameplay", "Projectile" })
             {
@@ -306,7 +328,7 @@ namespace RocketLauncher.Editor
                 layers.InsertArrayElementAtIndex(layers.arraySize);
                 var entry = layers.GetArrayElementAtIndex(layers.arraySize - 1);
                 entry.FindPropertyRelative("name").stringValue  = name;
-                entry.FindPropertyRelative("uniqueID").intValue = name.GetHashCode();
+                entry.FindPropertyRelative("uniqueID").intValue = SortingLayerIDs[name];
             }
             tm.ApplyModifiedProperties();
         }

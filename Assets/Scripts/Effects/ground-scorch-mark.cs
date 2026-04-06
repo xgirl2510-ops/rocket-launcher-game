@@ -13,10 +13,15 @@ namespace RocketLauncher
     /// </summary>
     public static class GroundScorch
     {
+        private struct CraterData
+        {
+            public float X;
+            public float Width;
+            public float Depth;
+        }
+
         private static readonly List<GameObject> _allCraters = new List<GameObject>();
-        private static readonly List<float> _craterXPositions = new List<float>();
-        private static readonly List<float> _craterWidths = new List<float>();
-        private static readonly List<float> _craterDepths = new List<float>();
+        private static readonly List<CraterData> _craters = new List<CraterData>();
         private static bool _groundPrepared;
 
         private const int MaskVariantCount = 8;
@@ -26,9 +31,7 @@ namespace RocketLauncher
         private static void ResetStaticState()
         {
             _allCraters.Clear();
-            _craterXPositions.Clear();
-            _craterWidths.Clear();
-            _craterDepths.Clear();
+            _craters.Clear();
             DestroyMaskVariants();
             _groundPrepared = false;
         }
@@ -52,7 +55,7 @@ namespace RocketLauncher
         private static void PrepareGround()
         {
             if (_groundPrepared) return;
-            var ground = GameObject.FindWithTag(GameConstants.TagGround);
+            var ground = GameObject.Find(GameConstants.GroundObjectName);
             if (ground == null) return;
             var sr = ground.GetComponent<SpriteRenderer>();
             if (sr != null)
@@ -105,9 +108,7 @@ namespace RocketLauncher
 
             RocketDebris.SpawnDirtDebris(impactPosition, scale);
 
-            _craterXPositions.Add(impactPosition.x);
-            _craterWidths.Add(craterW);
-            _craterDepths.Add(craterH);
+            _craters.Add(new CraterData { X = impactPosition.x, Width = craterW, Depth = craterH });
             _allCraters.Add(parent);
         }
 
@@ -118,14 +119,14 @@ namespace RocketLauncher
         public static float GetGroundY(float x)
         {
             float baseY = GameConstants.GroundTop;
-            for (int i = 0; i < _craterXPositions.Count; i++)
+            for (int i = 0; i < _craters.Count; i++)
             {
-                float halfW = _craterWidths[i] * 0.4f;
-                float dx = Mathf.Abs(x - _craterXPositions[i]);
+                float halfW = _craters[i].Width * 0.4f;
+                float dx = Mathf.Abs(x - _craters[i].X);
                 if (dx >= halfW) continue;
 
                 float t = 1f - (dx / halfW);
-                float depth = _craterDepths[i] * t * 0.7f;
+                float depth = _craters[i].Depth * t * 0.7f;
                 float craterY = baseY - depth;
                 if (craterY < baseY)
                     baseY = craterY;
@@ -142,9 +143,8 @@ namespace RocketLauncher
                     Object.Destroy(_allCraters[i]);
             }
             _allCraters.Clear();
-            _craterXPositions.Clear();
-            _craterWidths.Clear();
-            _craterDepths.Clear();
+            _craters.Clear();
+            _groundPrepared = false;
         }
 
         private static void EnsureMaskVariants()
@@ -187,8 +187,9 @@ namespace RocketLauncher
                 }
             }
 
-            tex.Apply();
+            tex.wrapMode = TextureWrapMode.Clamp;
             tex.filterMode = FilterMode.Point;
+            tex.Apply();
             return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 1f), size);
         }
 

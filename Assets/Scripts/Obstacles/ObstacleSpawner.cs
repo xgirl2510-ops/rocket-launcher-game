@@ -95,7 +95,9 @@ namespace RocketLauncher
             _lastLaunchDir = new Vector2(vx, vy).normalized;
             _lastLaunchForce = vClamped;
 
-            float totalTime = Mathf.Abs(dx) / Mathf.Max(vx, 0.1f);
+            // Time of flight: use actual projectile formula, capped to prevent degenerate arcs
+            float timeOfFlight = (vy + Mathf.Sqrt(vy * vy + 2f * g * Mathf.Max(0f, start.y - GameConstants.GroundTop))) / g;
+            float totalTime = Mathf.Min(Mathf.Abs(dx) / Mathf.Max(Mathf.Abs(vx), 0.1f), timeOfFlight * 1.2f);
 
             Vector2[] points = new Vector2[_trajectorySteps + 1];
             for (int i = 0; i <= _trajectorySteps; i++)
@@ -130,11 +132,11 @@ namespace RocketLauncher
                 if (IsInSafeZone(candidate)) continue;
 
                 bool overlaps = false;
-                float minDistSqr = _obstacleMaxSize * 1.2f;
-                minDistSqr *= minDistSqr;
+                float minSepSqr = _obstacleMaxSize * 1.2f;
+                minSepSqr *= minSepSqr;
                 foreach (var obs in _obstacles)
                 {
-                    if (((Vector2)obs.transform.position - candidate).sqrMagnitude < minDistSqr)
+                    if (((Vector2)obs.transform.position - candidate).sqrMagnitude < minSepSqr)
                     {
                         overlaps = true;
                         break;
@@ -165,6 +167,7 @@ namespace RocketLauncher
             var go = new GameObject("Obstacle");
             go.transform.position = new Vector3(position.x, position.y, 0f);
             go.tag = GameConstants.TagGround;
+            go.layer = GameConstants.DefaultLayer;
 
             float size = Random.Range(_obstacleMinSize, _obstacleMaxSize);
             go.transform.localScale = new Vector3(size, size, 1f);
@@ -172,7 +175,7 @@ namespace RocketLauncher
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite = RuntimeSpriteFactory.GetSolidSprite();
             sr.color = _obstacleColor;
-            sr.sortingLayerName = "Gameplay";
+            sr.sortingLayerName = GameConstants.SortingLayerGameplay;
 
             go.AddComponent<BoxCollider2D>();
 
@@ -186,6 +189,11 @@ namespace RocketLauncher
                 if (obs != null) Destroy(obs);
             }
             _obstacles.Clear();
+        }
+
+        private void OnDestroy()
+        {
+            ClearObstacles();
         }
 
     }

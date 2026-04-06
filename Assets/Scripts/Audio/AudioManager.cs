@@ -26,7 +26,9 @@ namespace RocketLauncher
         private AudioClip _stretchClip;
         private AudioClip _clickClip;
         private AudioClip _groundHitClip;
+        private AudioClip _targetHitClip;
 
+        // Single-scene only — no DontDestroyOnLoad by design
         private void Awake()
         {
             if (Instance != null && Instance != this)
@@ -47,23 +49,27 @@ namespace RocketLauncher
             _stretchClip = ProceduralAudioClipGenerator.CreateStretch();
             _clickClip = ProceduralAudioClipGenerator.CreateClick();
             _groundHitClip = ProceduralAudioClipGenerator.CreateGroundHit();
+            _targetHitClip = ProceduralAudioClipGenerator.CreateTargetHit();
         }
 
         public void PlayLaunch()
         {
+            _oneShotSource.pitch = 1.0f;
             if (_launchClip != null) _oneShotSource.PlayOneShot(_launchClip);
         }
 
         public void PlayHitGround()
         {
+            _oneShotSource.pitch = 1.0f;
             if (_boomClip != null) _oneShotSource.PlayOneShot(_boomClip);
             else if (_groundHitClip != null) _oneShotSource.PlayOneShot(_groundHitClip);
         }
 
         public void PlayHitTarget()
         {
+            _oneShotSource.pitch = 1.3f;
             if (_boomClip != null) _oneShotSource.PlayOneShot(_boomClip);
-            else if (_groundHitClip != null) _oneShotSource.PlayOneShot(_groundHitClip);
+            else if (_targetHitClip != null) _oneShotSource.PlayOneShot(_targetHitClip);
         }
 
         public void PlayStretch() { if (_stretchClip != null) _oneShotSource.PlayOneShot(_stretchClip); }
@@ -89,6 +95,7 @@ namespace RocketLauncher
             if (_stretchClip != null) Destroy(_stretchClip);
             if (_clickClip != null) Destroy(_clickClip);
             if (_groundHitClip != null) Destroy(_groundHitClip);
+            if (_targetHitClip != null) Destroy(_targetHitClip);
         }
     }
 }

@@ -11,11 +11,10 @@ namespace RocketLauncher
     /// </summary>
     public class ExplosionEffect : MonoBehaviour
     {
-        [Header("Burst Settings")]
         [SerializeField] private int _burstCount = 30;
         [SerializeField] private float _particleLifetime = 0.6f;
-        [SerializeField] private float _startSpeed = 4f;
-        [SerializeField] private float _startSize = 0.2f;
+        [SerializeField] private float _startSpeed = 8f;
+        [SerializeField] private float _startSize = 0.3f;
 
         private ParticleSystem _ps;
 

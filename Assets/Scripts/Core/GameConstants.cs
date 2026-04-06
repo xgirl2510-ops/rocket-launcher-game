@@ -13,5 +13,9 @@ namespace RocketLauncher
 
         // Height threshold below which a crater/scorch mark is spawned on ground hit
         public const float CraterSpawnHeightThreshold = 1.5f;
+
+        public const string GroundObjectName = "Ground";
+        public const int DefaultLayer = 0;
+        public const string SortingLayerGameplay = "Gameplay";
     }
 }

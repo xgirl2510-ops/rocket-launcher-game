@@ -11,6 +11,7 @@ namespace RocketLauncher
         private float _duration;
         private float _magnitude;
         private float _elapsed;
+        private Vector2 _currentOffset;
 
         /// <summary>Start a new screen shake. Replaces any in-progress shake.</summary>
         public void Shake(float duration, float magnitude)
@@ -20,17 +21,28 @@ namespace RocketLauncher
             _elapsed = 0f;
         }
 
-        /// <summary>
-        /// Returns the current shake offset (decays linearly to zero).
-        /// Call once per frame from the camera positioning code.
-        /// </summary>
-        public Vector2 GetOffset()
+        private void Update()
         {
-            if (_elapsed >= _duration) return Vector2.zero;
-
+            if (_elapsed >= _duration)
+            {
+                _currentOffset = Vector2.zero;
+                return;
+            }
             _elapsed += Time.deltaTime;
             float decay = 1f - (_elapsed / _duration);
-            return Random.insideUnitCircle * _magnitude * decay;
+            _currentOffset = Random.insideUnitCircle * _magnitude * decay;
+        }
+
+        /// <summary>Returns current shake offset. Pure read — no side effects.</summary>
+        public Vector2 GetOffset()
+        {
+            return _currentOffset;
+        }
+
+        private void OnDisable()
+        {
+            _currentOffset = Vector2.zero;
+            _elapsed = _duration;
         }
     }
 }

@@ -14,8 +14,12 @@ namespace RocketLauncher
         [SerializeField, Range(1f, 3f)] private float _maxScale = 2.0f;
         [SerializeField] private Color _color = new Color(1f, 1f, 1f, 0.7f);
 
+        private float _initialScaleX;
+
         private void Awake()
         {
+            _initialScaleX = transform.localScale.x;
+
             if (_spriteRenderer == null)
                 _spriteRenderer = GetComponent<SpriteRenderer>();
 
@@ -47,7 +51,7 @@ namespace RocketLauncher
             transform.rotation = Quaternion.Euler(0f, 0f, angle);
 
             float scaleY = Mathf.Lerp(_minScale, _maxScale, normalizedForce);
-            transform.localScale = new Vector3(transform.localScale.x, scaleY, 1f);
+            transform.localScale = new Vector3(_initialScaleX, scaleY, 1f);
         }
     }
 }

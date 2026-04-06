@@ -28,6 +28,7 @@ namespace RocketLauncher
         [Header("Round Manager")]
         [SerializeField] private RoundManager _roundManager;
 
+        // Single-scene only — no DontDestroyOnLoad by design
         private void Awake()
         {
             if (Instance != null && Instance != this)

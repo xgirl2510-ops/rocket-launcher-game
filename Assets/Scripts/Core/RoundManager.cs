@@ -37,12 +37,16 @@ namespace RocketLauncher
 
         private void Awake()
         {
+            _roundTracker.LoadBestScore();
             RandomizeTarget();
         }
 
 #if UNITY_EDITOR
         private void OnValidate()
         {
+            // Skip validation during SceneSetupTool (AddComponent fires OnValidate before wiring)
+            if (!gameObject.scene.isLoaded) return;
+
             if (_rocket == null) Debug.LogWarning("[RoundManager] _rocket not assigned.", this);
             if (_spawnPoint == null) Debug.LogWarning("[RoundManager] _spawnPoint not assigned.", this);
             if (_launchController == null) Debug.LogWarning("[RoundManager] _launchController not assigned.", this);
@@ -144,6 +148,7 @@ namespace RocketLauncher
             if (_cameraController != null)
             {
                 _cameraController.OnIntroComplete -= OnIntroDone;
+                // Defensive: OnLookTargetComplete is subscribed conditionally in HandleLookTarget and self-unsubscribes; safe to remove even if never subscribed.
                 _cameraController.OnLookTargetComplete -= OnLookTargetDone;
             }
         }

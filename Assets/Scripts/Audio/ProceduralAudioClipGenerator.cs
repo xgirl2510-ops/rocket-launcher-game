@@ -31,7 +31,7 @@ namespace RocketLauncher
                 float boom = Mathf.Sin(2f * Mathf.PI * boomFreq * phase);
                 boom = Mathf.Clamp(boom * 1.8f, -1f, 1f) * 0.7f;
 
-                float rawNoise = Random.value * 2f - 1f;
+                float rawNoise = UnityEngine.Random.Range(-1f, 1f);
                 prevNoise += 0.12f * (rawNoise - prevNoise);
 
                 float blast = rawNoise * Mathf.Exp(-t * 20f) * 0.6f;
@@ -61,10 +61,11 @@ namespace RocketLauncher
                 {
                     int idx = n * noteSamples + i;
                     if (idx >= samples) break;
-                    float t = (float)i / noteSamples;
-                    float attack = Mathf.Min(t * 10f, 1f);
-                    float decay = 1f - Mathf.Pow(t, 2f);
-                    data[idx] = Mathf.Sin(2f * Mathf.PI * freqs[n] * t) * attack * decay * 0.4f;
+                    float localT = (float)i / noteSamples;
+                    float globalT = (float)(n * noteSamples + i) / SampleRate;
+                    float attack = Mathf.Min(localT * 10f, 1f);
+                    float decay = 1f - Mathf.Pow(localT, 2f);
+                    data[idx] = Mathf.Sin(2f * Mathf.PI * freqs[n] * globalT) * attack * decay * 0.4f;
                 }
             }
 
@@ -88,6 +89,23 @@ namespace RocketLauncher
                 data[i] = Mathf.Sin(2f * Mathf.PI * freq * t * duration) * envelope * 0.3f;
             }
 
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        /// <summary>Higher-pitched, shorter boom — target hit.</summary>
+        public static AudioClip CreateTargetHit()
+        {
+            var clip = AudioClip.Create("TargetHit", SampleRate / 4, 1, SampleRate, false);
+            float[] data = new float[SampleRate / 4];
+            for (int i = 0; i < data.Length; i++)
+            {
+                float t = (float)i / SampleRate;
+                float envelope = Mathf.Exp(-t * 12f);
+                float noise = UnityEngine.Random.Range(-1f, 1f);
+                float tone = Mathf.Sin(2f * Mathf.PI * 220f * t);
+                data[i] = (noise * 0.4f + tone * 0.6f) * envelope * 0.7f;
+            }
             clip.SetData(data, 0);
             return clip;
         }
