@@ -68,6 +68,12 @@ namespace RocketLauncher
         public static void PrepareGround(Transform ground)
         {
             if (_groundPrepared) return;
+            // Fallback: find ground if not injected (editor tool wires this at setup time)
+            if (ground == null)
+            {
+                var groundGo = GameObject.Find(GameConstants.GroundObjectName);
+                if (groundGo != null) ground = groundGo.transform;
+            }
             if (ground == null) return;
             var sr = ground.GetComponent<SpriteRenderer>();
             if (sr != null)
