@@ -68,13 +68,13 @@ namespace RocketLauncher
         public static void PrepareGround(Transform ground)
         {
             if (_groundPrepared) return;
-            // Fallback: find ground if not injected (editor tool wires this at setup time)
             if (ground == null)
             {
-                var groundGo = GameObject.Find(GameConstants.GroundObjectName);
-                if (groundGo != null) ground = groundGo.transform;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                Debug.LogWarning("[GroundScorch] Ground transform not provided — craters disabled. Wire via Tools > Rocket Launcher > Setup Scene.");
+#endif
+                return;
             }
-            if (ground == null) return;
             var sr = ground.GetComponent<SpriteRenderer>();
             if (sr != null)
                 sr.maskInteraction = SpriteMaskInteraction.VisibleOutsideMask;

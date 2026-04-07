@@ -77,6 +77,7 @@ namespace RocketLauncher.Editor
             SetupTags();
             SetupSortingLayers();
             SetupLayer(8, "Rocket");
+            ConfigurePhysics2DCollisionMatrix();
 
             SetupCamera();
 
@@ -342,6 +343,16 @@ namespace RocketLauncher.Editor
             var tm = GetTagManager();
             tm.FindProperty("layers").GetArrayElementAtIndex(index).stringValue = layerName;
             tm.ApplyModifiedProperties();
+        }
+
+        /// <summary>Configure Physics2D collision matrix — Rocket only collides with Default layer.</summary>
+        private static void ConfigurePhysics2DCollisionMatrix()
+        {
+            for (int i = 0; i < 32; i++)
+                Physics2D.IgnoreLayerCollision(GameConstants.RocketLayer, i, true);
+
+            // Rocket ↔ Default (ground + obstacles + target)
+            Physics2D.IgnoreLayerCollision(GameConstants.RocketLayer, GameConstants.DefaultLayer, false);
         }
 
         private static SerializedObject GetTagManager() =>
