@@ -3,9 +3,9 @@
 **Engine:** Unity 6 (6000.4.0f1)  
 **Ngôn ngữ:** C# (namespace: `RocketLauncher`, `RocketLauncher.Editor`, `RocketLauncher.Tests`)  
 **Nền tảng:** Mobile (iOS/Android) + PC  
-**Cập nhật lần cuối:** 2026-04-06  
+**Cập nhật lần cuối:** 2026-04-08  
 **Chất lượng code:** 9.0-9.5/10  
-**Thử nghiệm:** 52 tests, GitHub Actions CI/CD
+**Thử nghiệm:** 61 tests, GitHub Actions CI/CD
 
 ---
 
@@ -21,7 +21,7 @@ Rocket Launcher là game physics-based 2D slingshot single-scene. Người chơi
 - Chướng ngại vật với safe trajectory calculation
 - HUD với stats & hints
 - Auto-play demo mode
-- 52 unit tests
+- 61 unit tests
 - CI/CD pipeline
 
 ---
@@ -425,19 +425,19 @@ enum CameraState { Intro, Idle, Following, Returning, LookingAtTarget }
 
 ---
 
-## Testing (52 tests, 8 files)
+## Testing (61 tests, 7 files)
 
 ### Test Files
 
 | File | Tests | Focus |
 |---|---|---|
 | game-constants-validation-tests.cs | 6 | Constants SSOT |
-| game-round-tracker-tests.cs | 11 | Stats tracking |
-| ground-scorch-tests.cs | 13 | Crater system |
-| obstacle-spawner-trajectory-tests.cs | 11 | Safe direction |
-| rocket-debris-spawn-and-cleanup-tests.cs | 11 | Memory cleanup |
-| rocket-physics-tests.cs | 11 | Launch & rotation |
-| round-manager-state-transition-tests.cs | 11 | Game flow |
+| game-round-tracker-tests.cs | 10 | Stats tracking |
+| ground-scorch-tests.cs | 9 | Crater system |
+| obstacle-spawner-trajectory-tests.cs | 8 | Safe direction |
+| rocket-debris-spawn-and-cleanup-tests.cs | 10 | Memory cleanup |
+| rocket-physics-tests.cs | 10 | Launch & rotation |
+| round-manager-state-transition-tests.cs | 8 | Game flow |
 
 ### Assembly Definitions
 
@@ -532,8 +532,7 @@ enum CameraState { Intro, Idle, Following, Returning, LookingAtTarget }
 
 - **Code Score:** 9.0-9.5/10 (after 7 review rounds)
 - **Audit Score:** 7.4/10 (world-class standards)
-- **Test Coverage:** 52 tests
-- **Test Coverage:** 86 tests (older count, now 52)
+- **Test Coverage:** 61 tests
 - **Magic Numbers:** None (constants-driven)
 - **Type Safety:** Full (no string-based messaging)
 
@@ -596,7 +595,7 @@ File > Build Settings → Build
 
 - **Runtime Scripts:** 18 files, 1,754 LOC
 - **Editor Tools:** 4 files, 846 LOC
-- **Unit Tests:** 8 files, 52 tests
+- **Unit Tests:** 7 files, 61 tests
 - **Total Code:** ~2,600 LOC
 - **Assembly Definitions:** 3 (clean dependencies)
 - **Namespaces:** 3 (Runtime, Editor, Tests)

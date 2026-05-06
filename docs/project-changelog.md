@@ -6,14 +6,42 @@ Format: [Semantic Versioning](https://semver.org/) + [Conventional Commits](http
 
 ---
 
+## [v1.0.1] - 2026-04-08
+
+Checklist compliance pass + iOS TestFlight configuration.
+
+### Added
+
+**iOS Build Configuration**
+- TestFlight build settings configured (commit 257adef)
+- iOS platform support in ProjectSettings
+
+### Changed
+
+**Physics2D**
+- Collision matrix properly configured for Rocket/Obstacle layers (commit 09492af)
+- Removed runtime `GameObject.Find()` calls — use serialized refs or `transform.Find()` (commit 09492af)
+
+**Code Quality**
+- XML documentation on all public members in GameConstants (commit 53e65ce)
+- `Debug.LogError` wrapped in `#if UNITY_EDITOR || DEVELOPMENT_BUILD` guards (commit 53e65ce)
+- Checklist compliance: split long methods, extract constants, remove Find (commit efcfd1c)
+- Null guard consistency: fail-fast pattern, `RocketLayer` constant (commit a26f0f9)
+
+### Fixed
+
+- Crater visibility: fallback Find when ground ref not wired in scene (commit 1a998b7)
+
+---
+
 ## [v1.0] - 2026-04-06
 
-Production release. Code quality 9.0-9.5/10, 86 unit tests, CI pipeline complete.
+Production release. Code quality 9.0-9.5/10, 61 unit tests, CI pipeline complete.
 
 ### Added
 
 **Code Quality & Tests**
-- 86 unit tests across 7 test files (game-constants, game-round-tracker, ground-scorch, obstacle-spawner-trajectory, rocket-debris, rocket-physics, round-manager-state-transition)
+- 61 unit tests across 7 test files (game-constants, game-round-tracker, ground-scorch, obstacle-spawner-trajectory, rocket-debris, rocket-physics, round-manager-state-transition)
 - GitHub Actions CI pipeline: auto-run tests on push
 - OnValidate editor-time validation hooks
 - Type-safe C# event system (no string-based messaging)

@@ -121,7 +121,7 @@ Roadmap phát triển từ prototype ban đầu đến world-class production qu
 **Metrics:**
 - Code quality: 9.0-9.5/10
 - World-class audit: 7.4/10
-- Test coverage: 86 unit tests (7 test files)
+- Test coverage: 61 unit tests (7 test files)
 - CI pipeline: GitHub Actions
 - Zero magic numbers: all constants in GameConstants.cs
 - Type-safe events: no string-based messaging
@@ -186,9 +186,9 @@ Roadmap phát triển từ prototype ban đầu đến world-class production qu
 
 ---
 
-## Phase 9: Mobile & Platform (PLANNED)
+## Phase 9: Mobile & Platform (IN PROGRESS)
 
-**Status:** 📋 Planned
+**Status:** 🔨 In Progress
 **Priority:** Medium
 **Target:** v1.5 mobile launch
 
@@ -199,6 +199,8 @@ Roadmap phát triển từ prototype ban đầu đến world-class production qu
 - iOS/Android builds: resolution scaling, DPI awareness
 - Haptic feedback on impact
 
+**Note:** iOS TestFlight build settings configured (2026-04-08). Android TBD.
+
 **Dependencies:** Phase 7 optimization, Input System migration
 
 ---
@@ -207,7 +209,7 @@ Roadmap phát triển từ prototype ban đầu đến world-class production qu
 
 ### Strengths (9.0-9.5/10)
 - ✅ Event-driven architecture, clean separation of concerns
-- ✅ 86 unit tests, comprehensive coverage
+- ✅ 61 unit tests, comprehensive coverage
 - ✅ SSOT constants, no magic numbers
 - ✅ Memory leak fixes (texture cache, coroutine safety)
 - ✅ CI pipeline (GitHub Actions)
@@ -257,7 +259,7 @@ Roadmap phát triển từ prototype ban đầu đến world-class production qu
 | Metric | Target | Current |
 |--------|--------|---------|
 | Code Quality | 9.5/10 | 9.0/10 ✓ |
-| Test Coverage | 80%+ | 86 tests ✓ |
+| Test Coverage | 80%+ | 61 tests ✓ |
 | CI Pipeline | Green | Passing ✓ |
 | Performance | 60 FPS | 60 FPS ✓ |
 | Memory | <100MB | ~50MB ✓ |
