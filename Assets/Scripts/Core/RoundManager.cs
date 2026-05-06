@@ -157,6 +157,10 @@ namespace RocketLauncher
                 // Defensive: OnLookTargetComplete is subscribed conditionally in HandleLookTarget and self-unsubscribes; safe to remove even if never subscribed.
                 _cameraController.OnLookTargetComplete -= OnLookTargetDone;
             }
+
+            // Defensive: unsubscribe ad callback in case restart was interrupted
+            if (AdManager.Instance != null)
+                AdManager.Instance.OnAdClosed -= OnAdClosedRestart;
         }
 
         private IEnumerator DelayedAction(float delay, System.Action action)

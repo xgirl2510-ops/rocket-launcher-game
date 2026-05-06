@@ -9,7 +9,7 @@ namespace RocketLauncher
     public partial class RoundManager
     {
         private const float MinDirectionSqr = 0.01f;
-        /// <summary>Restart button clicked -- randomize target, intro pan, then enable input.</summary>
+        /// <summary>Restart button clicked -- show ad if needed, then randomize target, intro pan, enable input.</summary>
         public void HandleRestart()
         {
             _isAutoPlaying = false;
@@ -23,6 +23,34 @@ namespace RocketLauncher
             RoundManagerHUD.Instance?.HideWinUI();
             RoundManagerHUD.Instance?.HideHints();
 
+            // Check if ad should show for the round just completed
+            int completedRound = _roundTracker.RoundNumber;
+            if (AdManager.Instance != null && AdManager.Instance.ShouldShowAd(completedRound))
+            {
+                AdManager.Instance.OnAdClosed -= OnAdClosedRestart;
+                AdManager.Instance.OnAdClosed += OnAdClosedRestart;
+                if (!AdManager.Instance.ShowInterstitialIfReady())
+                {
+                    // Ad not ready — continue without ad
+                    AdManager.Instance.OnAdClosed -= OnAdClosedRestart;
+                    StartNewRound();
+                }
+            }
+            else
+            {
+                StartNewRound();
+            }
+        }
+
+        private void OnAdClosedRestart()
+        {
+            if (AdManager.Instance != null)
+                AdManager.Instance.OnAdClosed -= OnAdClosedRestart;
+            StartNewRound();
+        }
+
+        private void StartNewRound()
+        {
             ResetGameState();
             PrepareNewRound();
         }
