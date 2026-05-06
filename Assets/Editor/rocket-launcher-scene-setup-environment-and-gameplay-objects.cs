@@ -36,15 +36,20 @@ namespace RocketLauncher.Editor
         private const float GroundWidth   = 500f;
         private const float GroundCenterX = 0f;
 
-        // Step 3: Vehicle sits ON ground
-        private const float WheelLocalY  = -0.5f;
-        private const float WheelRadius  = 0.2f;
-        private static readonly float VehicleY = GroundTop - WheelLocalY + WheelRadius;
+        // Sprite asset paths for PNG sprites
+        private const string RocketSpritePath = "Assets/Sprites/Generated/rocket2.png";
+        private const string LauncherSpritePath = "Assets/Sprites/Generated/car2.png";
+        private const string GroundSpritePath = "Assets/Sprites/Generated/ground.png";
+
+        // Step 3: Vehicle sits ON ground — car2.png (1462x780 @ PPU 100)
+        private const float VehicleVisualScale = 0.24f;
+        private static readonly float VehicleY = GroundTop + 780f / 100f * VehicleVisualScale / 2f;
         private const float VehicleOffsetFromLeft = 2.5f;
         private static readonly float VehicleX   = CamLeft + VehicleOffsetFromLeft;
 
-        // Step 4: Rocket spawn = on top of vehicle cabin
-        private const float SpawnOffsetY = 1.1f;
+        // Step 4: Rocket spawn = original Y position preserved
+        private const float RocketVisualScale = 0.24f;
+        private const float SpawnOffsetY = 0.8f;
         private static readonly Vector3 RocketSpawnWorld = new Vector3(VehicleX, VehicleY + SpawnOffsetY, 0f);
 
         // Step 5: Target floats in the sky
@@ -53,11 +58,17 @@ namespace RocketLauncher.Editor
 
         private static void CreateEnvironment(GameObject parent)
         {
-            var ground = CreateSprite("Ground", parent,
-                new Vector3(GroundCenterX, GroundCenterY, 0f), new Vector3(GroundWidth, GroundSpriteHeight, 1f),
-                Hex("#8B6914"), "Environment");
+            // ground.png 25000x2048 @ PPU100 = 250 x 20.48 world units at scale 1
+            var ground = CreateEmpty("Ground", parent);
+            float groundNaturalH = 2048f / 100f; // 20.48
+            ground.transform.position = new Vector3(GroundCenterX, GroundTop - groundNaturalH / 2f, 0f);
+            ground.transform.localScale = Vector3.one;
             ground.tag = GameConstants.TagGround;
-            ground.AddComponent<BoxCollider2D>();
+            var groundCol = ground.AddComponent<BoxCollider2D>();
+            groundCol.size = new Vector2(GroundWidth, groundNaturalH); // 500 wide collider
+            var groundSr = ground.AddComponent<SpriteRenderer>();
+            groundSr.sprite = LoadSpriteFromPng(GroundSpritePath, 16384);
+            groundSr.sortingLayerName = "Environment";
 
             var target = CreateSprite("Target", parent,
                 new Vector3(TargetX, TargetY, 0f), new Vector3(1.5f, TargetScaleY, 1f),
@@ -80,25 +91,17 @@ namespace RocketLauncher.Editor
 
             var col = vehicle.AddComponent<BoxCollider2D>();
             col.isTrigger = true;
-            col.size = new Vector2(3f, 2f);
+            col.size = new Vector2(3f, 1.2f);
 
-            CreateSprite("Body", vehicle,
-                Vector3.zero, new Vector3(2f, 0.8f, 1f),
-                Hex("#2D5016"), "Gameplay");
+            // Single sprite using car2.png
+            var visual = CreateEmpty("Visual", vehicle);
+            var sr = visual.AddComponent<SpriteRenderer>();
+            sr.sprite = LoadSpriteFromPng(LauncherSpritePath);
+            sr.sortingLayerName = "Gameplay";
+            visual.transform.localScale = new Vector3(VehicleVisualScale, VehicleVisualScale, 1f);
 
-            CreateSprite("Cabin", vehicle,
-                new Vector3(0f, 0.6f, 0f), new Vector3(0.6f, 0.6f, 1f),
-                Hex("#2D5016"), "Gameplay");
-
-            CreateSprite("WheelLeft", vehicle,
-                new Vector3(-0.6f, -0.5f, 0f), new Vector3(0.4f, 0.4f, 1f),
-                Hex("#333333"), "Gameplay", "Circle");
-
-            CreateSprite("WheelRight", vehicle,
-                new Vector3(0.6f, -0.5f, 0f), new Vector3(0.4f, 0.4f, 1f),
-                Hex("#333333"), "Gameplay", "Circle");
-
-            CreateEmpty("RocketSpawnPoint", vehicle).transform.localPosition = new Vector3(0f, 1.1f, 0f);
+            CreateEmpty("RocketSpawnPoint", vehicle).transform.localPosition =
+                new Vector3(0f, SpawnOffsetY, 0f);
         }
 
         private static void CreateRocket(GameObject parent)
@@ -134,14 +137,12 @@ namespace RocketLauncher.Editor
                 ihSo.FindProperty("_ground").objectReferenceValue = groundGo.transform;
             ihSo.ApplyModifiedProperties();
 
-            CreateSprite("Body", go,
-                Vector3.zero, new Vector3(0.3f, 0.8f, 1f),
-                Hex("#CC0000"), "Projectile");
-
-            var nose = CreateSprite("Nose", go,
-                new Vector3(0f, 0.55f, 0f), new Vector3(0.3f, 0.3f, 1f),
-                Hex("#CC0000"), "Projectile");
-            nose.transform.localEulerAngles = new Vector3(0f, 0f, 45f);
+            // Single sprite using rocket.png
+            var visual = CreateEmpty("Visual", go);
+            var sr = visual.AddComponent<SpriteRenderer>();
+            sr.sprite = LoadSpriteFromPng(RocketSpritePath);
+            sr.sortingLayerName = "Projectile";
+            visual.transform.localScale = new Vector3(RocketVisualScale, RocketVisualScale, 1f);
         }
 
         private static void CreateAimArrow(GameObject parent)

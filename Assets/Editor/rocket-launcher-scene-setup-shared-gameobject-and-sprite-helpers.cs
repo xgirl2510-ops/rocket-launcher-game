@@ -132,6 +132,25 @@ namespace RocketLauncher.Editor
             return sprite;
         }
 
+        /// <summary>Load a PNG sprite from Assets, force-ensuring Sprite import settings.</summary>
+        private static Sprite LoadSpriteFromPng(string assetPath, int maxSize = 4096)
+        {
+            var importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
+            if (importer != null)
+            {
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.spritePixelsPerUnit = 100;
+                importer.filterMode = FilterMode.Bilinear;
+                importer.maxTextureSize = maxSize;
+                importer.SaveAndReimport();
+            }
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+            if (sprite == null)
+                Debug.LogError($"[SceneSetupTool] Sprite not found at {assetPath}");
+            return sprite;
+        }
+
         private static Color Hex(string hex)
         {
             ColorUtility.TryParseHtmlString(hex, out Color c);
