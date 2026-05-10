@@ -113,6 +113,7 @@ namespace RocketLauncher.Editor
             var launchClip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/rocket-start.mp3");
             var thrustClip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/rocket-flight.mp3");
             var boomClip   = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/rocket-boom.mp3");
+            var interceptorClip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/rks.mp3");
 
             if (launchClip != null) so.FindProperty("_launchClip").objectReferenceValue = launchClip;
             else Debug.LogWarning("[SceneSetupTool] Audio clip not found: Assets/Audio/rocket-start.mp3");
@@ -120,6 +121,8 @@ namespace RocketLauncher.Editor
             else Debug.LogWarning("[SceneSetupTool] Audio clip not found: Assets/Audio/rocket-flight.mp3");
             if (boomClip != null)   so.FindProperty("_boomClip").objectReferenceValue = boomClip;
             else Debug.LogWarning("[SceneSetupTool] Audio clip not found: Assets/Audio/rocket-boom.mp3");
+            if (interceptorClip != null) so.FindProperty("_interceptorLaunchClip").objectReferenceValue = interceptorClip;
+            else Debug.LogWarning("[SceneSetupTool] Audio clip not found: Assets/Audio/rks.mp3");
             so.ApplyModifiedProperties();
 
             Undo.RegisterCreatedObjectUndo(go, "Create AudioManager");
@@ -153,6 +156,9 @@ namespace RocketLauncher.Editor
             if (target != null)
                 so.FindProperty("_targetTransform").objectReferenceValue = target.transform;
 
+            if (vehicle != null)
+                so.FindProperty("_launcherVehicleTransform").objectReferenceValue = vehicle.transform;
+
             so.FindProperty("_obstacleSpawner").objectReferenceValue = os;
             // LaunchController wired after it's created
             so.ApplyModifiedProperties();
@@ -163,6 +169,28 @@ namespace RocketLauncher.Editor
                 osSo.FindProperty("_spawnPoint").objectReferenceValue = spawnPoint;
             if (target != null)
                 osSo.FindProperty("_targetTransform").objectReferenceValue = target.transform;
+            // Jet fighter sprite for obstacles (indestructible, matches launcher truck width).
+            var obstacleSprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Sprites/Generated/protector.png");
+            if (obstacleSprite != null)
+                osSo.FindProperty("_obstacleSprite").objectReferenceValue = obstacleSprite;
+            else
+                Debug.LogWarning("[SceneSetupTool] protector.png not found — obstacles will use solid square fallback.");
+            // Interceptor missile sprite (rk.png) — fired by jets at incoming player rocket.
+            var interceptorSprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Sprites/Generated/rk.png");
+            if (interceptorSprite != null)
+                osSo.FindProperty("_interceptorSprite").objectReferenceValue = interceptorSprite;
+            else
+                Debug.LogWarning("[SceneSetupTool] rk.png not found — jets will not fire interceptors.");
+            // Force-overwrite size for upscaled 1791x361 protector.png. Setup-Scene-only — Inspector
+            // edits stick because this only runs when the user explicitly invokes the setup tool.
+            osSo.FindProperty("_obstacleMinSize").floatValue = 0.196f;
+            osSo.FindProperty("_obstacleMaxSize").floatValue = 0.196f;
+            // Per-round random count 6..12 for varied difficulty.
+            osSo.FindProperty("_obstacleCountMin").intValue = 6;
+            osSo.FindProperty("_obstacleCountMax").intValue = 12;
+            // Tighter Y range so jets cluster as a formation rather than scattering.
+            osSo.FindProperty("_spawnMinY").floatValue = -3f;
+            osSo.FindProperty("_spawnMaxY").floatValue = 13f;
             osSo.ApplyModifiedProperties();
 
             Debug.Log("[SceneSetupTool] RoundManager + ObstacleSpawner wired.");
@@ -184,7 +212,15 @@ namespace RocketLauncher.Editor
             if (rocket != null)
                 so.FindProperty("_rocket").objectReferenceValue = rocket.GetComponent<Rocket>();
             if (aimArrow != null)
+            {
                 so.FindProperty("_aimArrow").objectReferenceValue = aimArrow.GetComponent<AimArrow>();
+                // Force AimArrow's _minScale to ~rocket length so the arrow is visible
+                // immediately on drag-start without poking past the rocket nose.
+                var aaSo = new SerializedObject(aimArrow.GetComponent<AimArrow>());
+                aaSo.FindProperty("_minScale").floatValue = 1.0f;
+                aaSo.FindProperty("_maxScale").floatValue = 2.5f;
+                aaSo.ApplyModifiedProperties();
+            }
             if (spawnPoint != null)
                 so.FindProperty("_spawnPoint").objectReferenceValue = spawnPoint;
             if (vehicle != null)
@@ -194,6 +230,10 @@ namespace RocketLauncher.Editor
             var rmGo = GameObject.Find("RoundManager");
             if (rmGo != null)
                 so.FindProperty("_roundManager").objectReferenceValue = rmGo.GetComponent<RoundManager>();
+
+            // Force tiny drag threshold so the aim arrow appears the instant the player
+            // starts dragging — overrides any stale serialized value (e.g. old 0.5).
+            so.FindProperty("_minDragDistance").floatValue = 0.05f;
 
             so.ApplyModifiedProperties();
 
@@ -223,6 +263,10 @@ namespace RocketLauncher.Editor
                 var winTextTransform = canvas.transform.Find("WinText");
                 if (winTextTransform != null)
                     so.FindProperty("_winText").objectReferenceValue = winTextTransform.GetComponent<TMPro.TextMeshProUGUI>();
+
+                var gameOverTextTransform = canvas.transform.Find("GameOverText");
+                if (gameOverTextTransform != null)
+                    so.FindProperty("_gameOverText").objectReferenceValue = gameOverTextTransform.GetComponent<TMPro.TextMeshProUGUI>();
 
                 var restartTransform = canvas.transform.Find("RestartButton");
                 if (restartTransform != null)

@@ -16,7 +16,10 @@ namespace RocketLauncher
         [SerializeField] private RoundManager _roundManager;
 
         [Header("Drag Settings")]
-        [SerializeField, Range(0.3f, 1f)] private float _minDragDistance = 0.5f;
+        // Tiny threshold so the aim arrow appears the instant the player starts dragging,
+        // instead of waiting until the drag exceeds half a world unit. Anything > 0 still
+        // prevents division-by-zero on stationary clicks.
+        [SerializeField, Range(0.01f, 1f)] private float _minDragDistance = 0.05f;
         [SerializeField, Range(2f, 5f)] private float _maxDragDistance = 3.0f;
 
         [Header("Vehicle Detection")]
@@ -74,10 +77,13 @@ namespace RocketLauncher
                 return;
             }
 
+            // Clamp launch direction to valid angle range; report whether clamped or near limit
+            launchDirection = ClampLaunchAngle(launchDirection, out AimAngleStatus status);
+
             if (_aimArrow != null)
             {
                 _aimArrow.Show();
-                _aimArrow.UpdateArrow(launchDirection, normalizedForce);
+                _aimArrow.UpdateArrow(launchDirection, normalizedForce, status);
             }
             RotateRocketToDirection(launchDirection);
 
@@ -100,6 +106,9 @@ namespace RocketLauncher
                 _rocket.transform.rotation = Quaternion.identity;
                 return;
             }
+
+            // Apply same angle clamp on release so launch matches what the player saw on the arrow
+            launchDirection = ClampLaunchAngle(launchDirection, out _);
 
             float launchForce = Mathf.Lerp(GameConstants.MinLaunchForce, GameConstants.MaxLaunchForce, normalizedForce);
 
@@ -148,6 +157,37 @@ namespace RocketLauncher
         {
             float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg + GameConstants.SpriteAngleOffset;
             _rocket.transform.rotation = Quaternion.Euler(0f, 0f, angle);
+        }
+
+        /// <summary>
+        /// Clamp launch direction to allowed angle range [MinLaunchAngleDeg, MaxLaunchAngleDeg].
+        /// Returns the (possibly clamped) direction and reports whether it was clamped or near the limit.
+        /// </summary>
+        private static Vector2 ClampLaunchAngle(Vector2 direction, out AimAngleStatus status)
+        {
+            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+            float min = GameConstants.MinLaunchAngleDeg;
+            float max = GameConstants.MaxLaunchAngleDeg;
+            float warn = GameConstants.LaunchAngleWarnMarginDeg;
+
+            float clamped = Mathf.Clamp(angle, min, max);
+            bool wasClamped = !Mathf.Approximately(clamped, angle);
+
+            if (wasClamped)
+            {
+                status = AimAngleStatus.Clamped;
+            }
+            else if (clamped <= min + warn || clamped >= max - warn)
+            {
+                status = AimAngleStatus.NearLimit;
+            }
+            else
+            {
+                status = AimAngleStatus.Valid;
+            }
+
+            float rad = clamped * Mathf.Deg2Rad;
+            return new Vector2(Mathf.Cos(rad), Mathf.Sin(rad));
         }
 
         /// <summary>Allow slingshot input (called after intro pan or reload).</summary>

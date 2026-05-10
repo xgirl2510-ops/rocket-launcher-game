@@ -21,6 +21,8 @@ namespace RocketLauncher
         [SerializeField] private AudioClip _launchClip;
         [SerializeField] private AudioClip _thrustClip;
         [SerializeField] private AudioClip _boomClip;
+        // SFX for jet defensive interceptor launch (rks.mp3) — short whoosh.
+        [SerializeField] private AudioClip _interceptorLaunchClip;
 
         private AudioSource _oneShotSource;
         private AudioSource _thrustSource;
@@ -76,6 +78,13 @@ namespace RocketLauncher
             _oneShotSource.pitch = TargetHitPitchMultiplier;
             if (_boomClip != null) _oneShotSource.PlayOneShot(_boomClip);
             else if (_targetHitClip != null) _oneShotSource.PlayOneShot(_targetHitClip);
+        }
+
+        /// <summary>Play jet interceptor launch sound (defensive missile fired by an obstacle jet).</summary>
+        public void PlayInterceptorLaunch()
+        {
+            _oneShotSource.pitch = 1.0f;
+            if (_interceptorLaunchClip != null) _oneShotSource.PlayOneShot(_interceptorLaunchClip);
         }
 
         /// <summary>Play slingshot stretch feedback sound.</summary>

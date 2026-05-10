@@ -12,6 +12,10 @@ namespace RocketLauncher
         /// <summary>Restart button clicked -- show ad if needed, then randomize target, intro pan, enable input.</summary>
         public void HandleRestart()
         {
+            // Unfreeze in case we're restarting from a friendly-fire game-over.
+            // Idempotent — normal restarts (not frozen) are no-ops.
+            WorldPauseController.Unfreeze();
+
             _isAutoPlaying = false;
             // Stop only RoundManager's own coroutines (reload/autoplay delays).
             // CameraController manages its own coroutines via PlayIntro -> StopActiveCoroutine.
@@ -21,6 +25,7 @@ namespace RocketLauncher
                 AudioManager.Instance.PlayClick();
 
             RoundManagerHUD.Instance?.HideWinUI();
+            RoundManagerHUD.Instance?.HideGameOverUI();
             RoundManagerHUD.Instance?.HideHints();
 
             // Check if ad should show for the round just completed
@@ -59,9 +64,12 @@ namespace RocketLauncher
         {
             RocketDebris.ClearAll();
             GroundScorch.ClearAll();
+            ExplosionEffect.ClearAll();
             _rocket.gameObject.SetActive(true);
             _rocket.ResetToPosition(_spawnPoint.position);
             if (_targetTransform != null) _targetTransform.gameObject.SetActive(true);
+            // Launcher vehicle gets disabled on friendly-fire game-over — re-enable on restart.
+            if (_launcherVehicleTransform != null) _launcherVehicleTransform.gameObject.SetActive(true);
             _missCount = 0;
         }
 
@@ -106,7 +114,9 @@ namespace RocketLauncher
             _rocket.gameObject.SetActive(true);
             _rocket.ResetToPosition(_spawnPoint.position);
             _launchController.RotateRocketToDirection(dir);
-            _rocket.Launch(dir, force);
+            // Auto-play uses pure ballistic flight (no drag, no thrust) so the trajectory
+            // matches the analytical solver's high-arc solution and reliably hits the target.
+            _rocket.LaunchBallistic(dir, force);
             if (AudioManager.Instance != null)
             {
                 AudioManager.Instance.PlayLaunch();

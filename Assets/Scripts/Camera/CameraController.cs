@@ -31,9 +31,13 @@ namespace RocketLauncher
         [SerializeField] private float _followOffsetY = 2f;
 
         [Header("Dynamic Zoom")]
-        [SerializeField] private float _maxOrthoSize = 25f;
+        [SerializeField] private float _maxOrthoSize = 15f;
         [SerializeField] private float _zoomOutSpeed = 5f;
         [SerializeField] private float _zoomMaxDistance = 40f;
+
+        [Header("Follow Bounds")]
+        [Tooltip("If true, camera X never goes left of vehicle X — keeps view focused on the playfield.")]
+        [SerializeField] private bool _clampLeftToVehicle = true;
 
         [Header("Return")]
         [SerializeField] private float _returnDuration = 1.0f;
@@ -129,9 +133,13 @@ namespace RocketLauncher
         {
             if (_rocket == null) return;
 
-            Vector2 target = new Vector2(
-                _rocket.transform.position.x,
-                _rocket.transform.position.y + _followOffsetY);
+            float targetX = _rocket.transform.position.x;
+            // Asymmetric follow: rocket should never push the camera left of the vehicle —
+            // forward-only gameplay means there's nothing of interest behind the launcher.
+            if (_clampLeftToVehicle && _vehicleTransform != null)
+                targetX = Mathf.Max(targetX, _vehicleTransform.position.x);
+
+            Vector2 target = new Vector2(targetX, _rocket.transform.position.y + _followOffsetY);
 
             Vector2 current = new Vector2(transform.position.x, transform.position.y);
             Vector2 smoothed = Vector2.SmoothDamp(current, target, ref _smoothVelocity, _followSmoothTime);

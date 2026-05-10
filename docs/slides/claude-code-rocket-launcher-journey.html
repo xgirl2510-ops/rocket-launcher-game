@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Claude Code + Unity — Hành trình Rocket Launcher</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{background:#0d1a2e;color:#e8ecf1;font-family:-apple-system,"SF Pro Display","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;font-size:16px;line-height:1.5}
+.slide{position:fixed;inset:0;display:none;padding:48px 72px 56px;flex-direction:column;background:linear-gradient(180deg,#0d1a2e 0%,#0b1628 100%)}
+.slide.active{display:flex}
+.slide::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#00c2e0,#4ade80)}
+.tag{color:#00c2e0;font-size:12px;font-weight:700;letter-spacing:3px;text-transform:uppercase;border-left:3px solid #00c2e0;padding-left:10px;margin-bottom:18px}
+h1{font-size:44px;font-weight:700;margin-bottom:18px;line-height:1.15}
+h2{font-size:36px;font-weight:700;margin-bottom:24px;line-height:1.2}
+h3{font-size:20px;font-weight:600;margin-bottom:12px;color:#7fd9ff}
+p{font-size:17px;line-height:1.65;margin-bottom:12px}
+.title-slide{justify-content:center;align-items:center;text-align:center}
+.title-slide h1{font-size:60px;margin-top:0}
+.title-slide .sub{color:#a7b0c0;font-size:22px;margin-top:14px;max-width:760px}
+.title-slide .meta{color:#6b7589;font-size:14px;margin-top:48px;letter-spacing:2px}
+.title-slide .icon{font-size:72px;margin-bottom:24px}
+.stat-row{display:flex;gap:18px;margin-bottom:28px;flex-wrap:wrap}
+.stat-card{flex:1;min-width:140px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);padding:24px 16px;text-align:center;border-radius:6px}
+.stat-card .n{font-size:44px;font-weight:700;color:#00c2e0;line-height:1}
+.stat-card .l{font-size:12px;color:#a7b0c0;margin-top:8px;line-height:1.4}
+.stat-card.green .n{color:#4ade80}.stat-card.red .n{color:#f87171}.stat-card.orange .n{color:#fbbf24}
+ul{list-style:none;padding-left:0}
+li{padding:6px 0 6px 22px;position:relative;font-size:17px;line-height:1.55}
+li::before{content:"•";position:absolute;left:0;color:#00c2e0;font-size:22px;line-height:1.3}
+li.bad::before{content:"✗";color:#f87171;font-size:16px;top:6px}
+li.good::before{content:"✓";color:#4ade80;font-size:16px;top:6px}
+pre{background:#051225;border:1px solid rgba(0,194,224,.2);border-radius:6px;padding:16px 18px;font-family:"JetBrains Mono","Fira Code",Menlo,monospace;font-size:12.5px;line-height:1.65;color:#e8ecf1;overflow:auto;margin:8px 0}
+.code-head{background:rgba(0,194,224,.08);color:#a7b0c0;padding:6px 14px;font-family:monospace;font-size:11px;border-radius:6px 6px 0 0;border:1px solid rgba(0,194,224,.2);border-bottom:none}
+.code-head+pre{border-radius:0 0 6px 6px;border-top:none;margin-top:0}
+code{color:#7fd9ff;font-family:"JetBrains Mono",monospace}
+pre code{color:inherit}
+.hl-k{color:#ff79c6}.hl-s{color:#f1fa8c}.hl-c{color:#6272a4;font-style:italic}.hl-n{color:#bd93f9}.hl-f{color:#50fa7b}.hl-t{color:#8be9fd}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.callout{background:rgba(0,194,224,.08);border-left:4px solid #00c2e0;padding:12px 18px;margin-top:16px;font-size:15px;border-radius:2px}
+.callout.warn{background:rgba(248,113,113,.08);border-left-color:#f87171}
+.callout.good{background:rgba(74,222,128,.08);border-left-color:#4ade80}
+.callout.muted{background:rgba(255,255,255,.03);border-left-color:#6b7589;color:#a7b0c0}
+table{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+th{background:#00c2e0;color:#0d1a2e;padding:10px 14px;text-align:left;font-weight:700;font-size:13px}
+td{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.08)}
+tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+.bad{color:#f87171}.ok{color:#4ade80}.mid{color:#fbbf24}.accent{color:#00c2e0}.muted{color:#a7b0c0}
+.nav{position:fixed;bottom:18px;right:28px;font-size:12px;color:#6b7589;z-index:100;background:rgba(13,26,46,.8);padding:6px 12px;border-radius:3px;border:1px solid rgba(255,255,255,.08)}
+.progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,#00c2e0,#4ade80);z-index:101;transition:width .35s ease}
+.top-tag{position:absolute;top:24px;right:30px;background:rgba(0,194,224,.1);border:1px solid rgba(0,194,224,.3);padding:5px 12px;font-size:11px;color:#00c2e0;border-radius:2px;letter-spacing:1px}
+.feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:20px}
+.feature{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);padding:16px;border-radius:4px}
+.feature .num{color:#00c2e0;font-size:13px;font-weight:700;margin-bottom:4px;letter-spacing:1px}
+.feature .ft{font-size:16px;font-weight:600;margin-bottom:4px}
+.feature .fd{font-size:13px;color:#a7b0c0;line-height:1.5}
+.lesson{background:rgba(255,255,255,.03);border:1px solid rgba(0,194,224,.2);border-radius:4px;padding:14px 18px;margin-bottom:10px;display:grid;grid-template-columns:180px 1fr;gap:16px;align-items:center}
+.lesson .k{color:#00c2e0;font-weight:700;font-size:15px}
+.lesson .v{font-size:14px;line-height:1.55;color:#d0d7e2}
+.term{background:#061627;border:1px solid rgba(0,194,224,.15);border-radius:4px;padding:14px;font-family:"JetBrains Mono",monospace;font-size:13px;line-height:1.7;color:#a7f0ff;white-space:pre-wrap;overflow:auto;max-height:48vh}
+.term .p{color:#4ade80}.term .e{color:#f87171}.term .i{color:#7fd9ff}.term .m{color:#6b7589}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+.phase-row{display:grid;grid-template-columns:40px 1fr 1fr 100px;gap:12px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.06);align-items:center;font-size:14px}
+.phase-row.head{background:rgba(0,194,224,.1);color:#00c2e0;font-weight:700;font-size:12px;letter-spacing:1px;border:1px solid rgba(0,194,224,.2);border-radius:4px 4px 0 0}
+.phase-row .pn{color:#00c2e0;font-weight:700}
+.big-num{font-size:120px;font-weight:800;color:#00c2e0;line-height:1}
+.icn{display:inline-block;width:34px;height:34px;background:rgba(0,194,224,.15);border:1px solid rgba(0,194,224,.3);border-radius:4px;color:#00c2e0;text-align:center;line-height:32px;font-weight:700;margin-right:12px;vertical-align:middle}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#00c2e0;margin-right:6px;vertical-align:middle}
+.dot.g{background:#4ade80}.dot.r{background:#f87171}.dot.o{background:#fbbf24}
+.kbd{display:inline-block;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:3px;padding:2px 7px;font-family:monospace;font-size:12px;color:#7fd9ff}
+footer-note{display:block;color:#6b7589;font-size:12px;margin-top:auto;padding-top:14px}
+.sub-title{color:#a7b0c0;font-size:16px;margin-top:-10px;margin-bottom:18px}
+.badge{display:inline-block;background:rgba(74,222,128,.12);color:#4ade80;padding:3px 10px;border-radius:3px;font-size:11px;font-weight:600;letter-spacing:1px;margin-right:6px}
+.badge.c{background:rgba(0,194,224,.12);color:#00c2e0}
+.badge.o{background:rgba(251,191,36,.12);color:#fbbf24}
+.badge.r{background:rgba(248,113,113,.12);color:#f87171}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="nav"><span id="cur">1</span> / <span id="total">36</span></div>
+
+<!-- 1. TITLE -->
+<section class="slide title-slide active">
+  <div class="icon">🚀</div>
+  <h1>Dùng AI <span class="accent">Claude Code</span><br>để code game Unity</h1>
+  <p class="sub">Case study thực tế — Build <strong>Rocket Launcher</strong> từ prototype đến iOS TestFlight trong 7 ngày</p>
+  <div class="meta">2026 · Unity 6 · C# · 2D Physics</div>
+</section>
+
+<!-- 2. AI changing game dev -->
+<section class="slide">
+  <span class="tag">Mở đầu</span>
+  <h2>AI đang thay đổi cách làm game</h2>
+  <div class="stat-row">
+    <div class="stat-card"><div class="n">52%</div><div class="l">game dev dùng AI<br>GDC 2025 · 3,000+ dev</div></div>
+    <div class="stat-card"><div class="n">73%</div><div class="l">studio đã áp dụng AI<br>a16z Games Survey</div></div>
+    <div class="stat-card green"><div class="n">37%</div><div class="l">indie dẫn đầu<br>vs 21% AAA/AA</div></div>
+  </div>
+  <ul style="margin-top:10px">
+    <li>Indie dùng AI gấp đôi AAA — lợi thế cho team nhỏ</li>
+    <li>Top use cases: playtesting (47%), localization (45%), code generation (44%)</li>
+    <li>McKinsey: dev hoàn thành task <strong class="accent">2x nhanh hơn</strong> với AI, docs giảm 50%</li>
+    <li><strong>Câu hỏi:</strong> một dev + AI có thể ship game từ đầu đến cuối không?</li>
+  </ul>
+</section>
+
+<!-- 3. What is Claude Code -->
+<section class="slide">
+  <span class="tag">Công cụ</span>
+  <h2>Claude Code là gì?</h2>
+  <ul>
+    <li><span class="icn">&gt;_</span>AI agent chạy trong terminal — đọc toàn bộ codebase (<strong>1M tokens</strong>)</li>
+    <li><span class="icn">⚙</span>Chạy compile, test, git, bash — bất kỳ lệnh nào</li>
+    <li><span class="icn">↻</span>Tự iterate: sinh code → chạy → lỗi → tự sửa → chạy lại</li>
+    <li><span class="icn">★</span>46% developer chọn là tool #1 — vượt Cursor (19%), Copilot (9%)</li>
+    <li><span class="icn">⚡</span>Plugin system: <strong>skills, agents, hooks, MCP servers</strong></li>
+  </ul>
+  <div class="callout"><span class="accent">$1 tỷ revenue/năm</span> trong 6 tháng · <span class="accent">4%</span> tổng GitHub commits 2025 do AI sinh</div>
+</section>
+
+<!-- 4. Comparison -->
+<section class="slide">
+  <span class="tag">Công cụ</span>
+  <h2>So sánh với AI coding tools khác</h2>
+  <table>
+    <tr><th>Tiêu chí</th><th>ChatGPT</th><th>Copilot</th><th>Cursor</th><th>Claude Code</th></tr>
+    <tr><td>Scope project</td><td class="bad">File paste</td><td class="mid">8K–16K tokens</td><td class="mid">File đang mở</td><td class="ok">1M tokens</td></tr>
+    <tr><td>Multi-file edit</td><td class="bad">Không</td><td class="mid">Hạn chế</td><td class="ok">Có</td><td class="ok">Mạnh nhất</td></tr>
+    <tr><td>Tự chạy lệnh</td><td class="bad">Không</td><td class="bad">Không</td><td class="mid">Hạn chế</td><td class="ok">Có</td></tr>
+    <tr><td>Tự sửa lỗi</td><td class="bad">Không</td><td class="bad">Không</td><td class="mid">Một phần</td><td class="ok">Vòng lặp tự động</td></tr>
+    <tr><td>MCP integration</td><td class="bad">Không</td><td class="bad">Không</td><td class="mid">Có</td><td class="ok">Mạnh nhất</td></tr>
+    <tr><td>Sub-agents</td><td class="bad">Không</td><td class="bad">Không</td><td class="bad">Không</td><td class="ok">Spawn song song</td></tr>
+  </table>
+  <div class="callout">Hãy xem Claude Code hoạt động thực tế — build <strong>Rocket Launcher</strong> từ đầu đến TestFlight</div>
+</section>
+
+<!-- 5. Game overview -->
+<section class="slide">
+  <span class="tag">Bắt đầu build</span>
+  <h2>Rocket Launcher — Game ta build</h2>
+  <div style="text-align:center;font-size:56px;margin:16px 0">🚀 🎯</div>
+  <p style="text-align:center;color:#00c2e0;font-size:18px;margin-bottom:20px">2D Physics Slingshot · Drag-Aim-Release · Portrait mobile</p>
+  <div class="feature-grid">
+    <div class="feature"><div class="num">01</div><div class="ft">Scene Setup</div><div class="fd">Editor tool tự tạo Hierarchy, wire references</div></div>
+    <div class="feature"><div class="num">02</div><div class="ft">Rocket Physics</div><div class="fd">Rigidbody2D, impulse launch, rotate-to-velocity</div></div>
+    <div class="feature"><div class="num">03</div><div class="ft">Slingshot Input</div><div class="fd">Drag trên vehicle, tính direction+force</div></div>
+    <div class="feature"><div class="num">04</div><div class="ft">Camera System</div><div class="fd">Intro pan → follow rocket → return</div></div>
+    <div class="feature"><div class="num">05</div><div class="ft">Game Loop + UI</div><div class="fd">Round states, HUD, hints, stats</div></div>
+    <div class="feature"><div class="num">06</div><div class="ft">Polish</div><div class="fd">Debris, trail, shake, crater, audio</div></div>
+  </div>
+  <div class="callout">Mỗi phase = 1 plan file chi tiết. Mỗi prompt = 1 feature rõ scope.</div>
+</section>
+
+<!-- 6. Final result stats -->
+<section class="slide">
+  <span class="tag">Bắt đầu build</span>
+  <h2>Kết quả: 7 ngày — từ zero đến TestFlight</h2>
+  <div class="stat-row">
+    <div class="stat-card"><div class="n">7</div><div class="l">ngày<br>01/04 → 08/04/2026</div></div>
+    <div class="stat-card green"><div class="n">25</div><div class="l">commits<br>conventional format</div></div>
+    <div class="stat-card"><div class="n">22</div><div class="l">C# scripts<br>+ 4 editor partials</div></div>
+    <div class="stat-card orange"><div class="n">2,584</div><div class="l">dòng runtime<br>(895 editor nữa)</div></div>
+  </div>
+  <div class="stat-row">
+    <div class="stat-card green"><div class="n">61</div><div class="l">unit tests<br>7 test files</div></div>
+    <div class="stat-card"><div class="n">26</div><div class="l">code reviews<br>7 rounds audit</div></div>
+    <div class="stat-card orange"><div class="n">9.5</div><div class="l">/10 code quality<br>world-class tier</div></div>
+    <div class="stat-card green"><div class="n">v1.0.1</div><div class="l">production<br>iOS TestFlight ready</div></div>
+  </div>
+  <div class="callout good">Từ placeholder shapes → production game với AdMob, CI/CD, unit tests đầy đủ — 1 dev + Claude Code</div>
+</section>
+
+<!-- 7. Project structure -->
+<section class="slide">
+  <span class="tag">Setup</span>
+  <h2>Bước 0: Project structure</h2>
+  <div class="code-head">RocketLauncher/ (root)</div>
+  <pre><span class="hl-c">├──</span> Assets/
+<span class="hl-c">│   ├──</span> Scripts/              <span class="hl-c"># 22 scripts, domain folders</span>
+<span class="hl-c">│   │   ├──</span> Core/              <span class="hl-c"># RoundManager, GameConstants, Tracker</span>
+<span class="hl-c">│   │   ├──</span> Rocket/            <span class="hl-c"># Rocket.cs (physics + events)</span>
+<span class="hl-c">│   │   ├──</span> Launch/            <span class="hl-c"># LaunchController, AimArrow</span>
+<span class="hl-c">│   │   ├──</span> Camera/            <span class="hl-c"># CameraController + ScreenShake</span>
+<span class="hl-c">│   │   ├──</span> Effects/           <span class="hl-c"># trail, debris, scorch, explosion</span>
+<span class="hl-c">│   │   ├──</span> Audio/             <span class="hl-c"># AudioManager + procedural</span>
+<span class="hl-c">│   │   ├──</span> Obstacles/         <span class="hl-c"># ObstacleSpawner + trajectory</span>
+<span class="hl-c">│   │   └──</span> Ads/               <span class="hl-c"># AdManager (AdMob interstitial)</span>
+<span class="hl-c">│   ├──</span> Editor/                <span class="hl-c"># 4 partials — auto-setup scene</span>
+<span class="hl-c">│   ├──</span> Sprites/Generated/     <span class="hl-c"># AI-generated (KlingAI)</span>
+<span class="hl-c">│   ├──</span> Audio/                 <span class="hl-c"># mp3 + generated</span>
+<span class="hl-c">│   └──</span> Scenes/GameScene.unity
+<span class="hl-c">├──</span> docs/                      <span class="accent"># 14 markdown — SSOT</span>
+<span class="hl-c">├──</span> plans/                     <span class="accent"># Plans + 26 review reports</span>
+<span class="hl-c">├──</span> CLAUDE.md                  <span class="accent"># Bộ não AI</span>
+<span class="hl-c">└──</span> .claude/settings.json      <span class="hl-c"># Permissions, hooks</span></pre>
+</section>
+
+<!-- 8. CLAUDE.md -->
+<section class="slide">
+  <span class="tag">Setup</span>
+  <h2>CLAUDE.md — bộ não cho AI</h2>
+  <p class="sub-title">File đặt ở root. AI đọc đầu tiên mỗi session, tuân thủ xuyên suốt mọi prompt.</p>
+  <div class="code-head">CLAUDE.md</div>
+  <pre><span class="hl-c"># Rocket Launcher — Project Context</span>
+
+<span class="hl-c">## Tech Stack</span>
+<span class="hl-c">-</span> Unity <span class="hl-n">6</span> (<span class="hl-s">6000.4.0f1</span>), <span class="hl-n">2D</span>, C# <span class="hl-n">10</span>
+<span class="hl-c">-</span> Rigidbody2D physics, Coroutines, no DOTS
+
+<span class="hl-c">## Namespace &amp; Conventions</span>
+<span class="hl-c">-</span> <span class="hl-t">namespace RocketLauncher</span> / <span class="hl-t">RocketLauncher.Editor</span>
+<span class="hl-c">-</span> File naming: kebab-case cho file mới
+<span class="hl-c">-</span> <span class="hl-f">[SerializeField] private _camelCase</span>
+<span class="hl-c">-</span> Events: <span class="hl-f">OnPascalCase</span>, subscribe trong <span class="hl-f">OnEnable</span>/<span class="hl-f">OnDisable</span>
+
+<span class="hl-c">## Architecture</span>
+<span class="hl-c">-</span> Event-driven: <span class="hl-f">Rocket.OnImpact</span> → RoundManager/Camera
+<span class="hl-c">-</span> LaunchController = input ONLY (SRP)
+<span class="hl-c">-</span> Physics = FixedUpdate, Input = Update, Camera = LateUpdate
+
+<span class="hl-c">## KHÔNG LÀM</span>
+<span class="hl-c">-</span> <span class="hl-f">GameObject.Find()</span> runtime — dùng <span class="hl-f">[SerializeField]</span> ref
+<span class="hl-c">-</span> Magic numbers — dùng <span class="hl-t">GameConstants</span>
+<span class="hl-c">-</span> <span class="hl-f">public</span> MonoBehaviour fields — luôn <span class="hl-f">[SerializeField] private</span>
+<span class="hl-c">-</span> Singleton lazy — inject qua scene references</pre>
+  <div class="callout good"><strong>Setup 10 phút</strong> → tiết kiệm hàng giờ iterate. AI không hỏi lại convention.</div>
+</section>
+
+<!-- 9. docs/ SSOT -->
+<section class="slide">
+  <span class="tag">Setup</span>
+  <h2>docs/ folder — Single Source of Truth</h2>
+  <p class="sub-title">14 markdown docs. AI đọc docs/ khi sinh code → tuân kiến trúc ngay lần đầu.</p>
+  <div class="two-col">
+    <div>
+      <h3>📋 Design docs</h3>
+      <ul>
+        <li><code>project-overview-pdr.md</code></li>
+        <li><code>game-design-document.md</code></li>
+        <li><code>development-roadmap.md</code> <span class="muted">(9 phases)</span></li>
+        <li><code>art-style-guide.md</code></li>
+        <li><code>design-steps.md</code></li>
+      </ul>
+      <h3 style="margin-top:18px">🏗 Architecture</h3>
+      <ul>
+        <li><code>system-architecture-and-script-communication.md</code></li>
+        <li><code>technical-specifications-per-script.md</code></li>
+        <li><code>scene-setup-and-hierarchy-guide.md</code></li>
+      </ul>
+    </div>
+    <div>
+      <h3>⚙ Code standards</h3>
+      <ul>
+        <li><code>code-standards-and-conventions.md</code></li>
+        <li><code>code-checklist.md</code> <span class="muted">(42 items)</span></li>
+        <li><code>codebase-summary.md</code> <span class="muted">(auto-updated)</span></li>
+      </ul>
+      <h3 style="margin-top:18px">📝 Tracking</h3>
+      <ul>
+        <li><code>project-changelog.md</code> <span class="muted">(SemVer)</span></li>
+        <li><code>tmux-claude-teams-setup-guide.md</code></li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout"><strong>Workflow:</strong> update GDD → prompt AI → AI đọc GDD + code-standards → sinh code đúng ngay</div>
+</section>
+
+<!-- 10. MCP Unity -->
+<section class="slide">
+  <span class="tag">Setup</span>
+  <h2>MCP Unity — AI điều khiển Editor</h2>
+  <p class="sub-title">MCP = Model Context Protocol. Standard cho AI gọi tools từ bên ngoài. Unity có server riêng.</p>
+  <div class="code-head">ProjectSettings/McpUnitySettings.json</div>
+  <pre>{
+  "Port": <span class="hl-n">8090</span>,
+  "RequestTimeoutSeconds": <span class="hl-n">10</span>,
+  "AutoStartServer": <span class="hl-n">true</span>,
+  "AllowRemoteConnections": <span class="hl-n">false</span>
+}</pre>
+  <div class="two-col" style="margin-top:14px">
+    <div>
+      <h3>AI làm được</h3>
+      <ul>
+        <li><code>get_scene_info</code> — đọc Hierarchy</li>
+        <li><code>add_asset_to_scene</code> — tạo GameObject</li>
+        <li><code>update_component</code> — sửa Rigidbody2D, Collider...</li>
+        <li><code>set_transform</code> — position/rotation/scale</li>
+        <li><code>run_tests</code> — chạy Test Runner</li>
+        <li><code>get_console_logs</code> — đọc errors</li>
+        <li><code>recompile_scripts</code> — force recompile</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Ví dụ thực tế</h3>
+      <div class="term"><span class="p">&gt;</span> Kiểm tra Hierarchy hiện tại có đủ GameObjects chưa
+
+<span class="i">🔍</span> mcp__mcp-unity__get_scene_info
+<span class="i">→</span> Scene: GameScene, 12 GameObjects
+<span class="i">→</span> Thiếu: ObstacleSpawner, AudioManager
+
+<span class="p">✅</span> Tự gọi add_asset_to_scene
+<span class="p">✅</span> update_component để attach script</div>
+    </div>
+  </div>
+</section>
+
+<!-- 11. Skills & Agents -->
+<section class="slide">
+  <span class="tag">Setup</span>
+  <h2>Skills &amp; Agents ecosystem</h2>
+  <p class="sub-title">Plugin system: skills = domain knowledge, agents = sub-tasks spawn song song.</p>
+  <div class="two-col">
+    <div>
+      <h3>Skills đã dùng</h3>
+      <ul>
+        <li><code>/plan</code> — tạo implementation plan đa-phase</li>
+        <li><code>/research</code> — đào sâu kỹ thuật trước khi code</li>
+        <li><code>/game-brainstorm</code> — brainstorm concept</li>
+        <li><code>/unity-specialist</code> — enforce Unity best practices</li>
+        <li><code>/debug</code> — systematic root-cause analysis</li>
+        <li><code>/code-reviewer</code> — audit chất lượng code</li>
+        <li><code>/gate-check</code> — PASS/CONCERNS/FAIL gate</li>
+        <li><code>/docs</code> — sync codebase-summary + changelog</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Agents (sub-tasks)</h3>
+      <ul>
+        <li><strong>Task</strong> tool spawn agent con — có context window riêng 200K</li>
+        <li><strong>Explore</strong> — quick codebase search</li>
+        <li><strong>planner</strong> — build plan từ research</li>
+        <li><strong>researcher</strong> — đa agent song song</li>
+        <li><strong>code-reviewer</strong> — độc lập review</li>
+        <li><strong>tester</strong> — chạy tests + báo cáo</li>
+        <li><strong>debugger</strong> — trace root cause</li>
+      </ul>
+      <div class="callout" style="margin-top:12px">Mỗi agent có 200K token riêng → không bloat context chính</div>
+    </div>
+  </div>
+</section>
+
+<!-- 12. Memory system -->
+<section class="slide">
+  <span class="tag">Setup</span>
+  <h2>Memory system — AI nhớ xuyên session</h2>
+  <p class="sub-title"><code>.claude/memory/MEMORY.md</code> giữ context qua nhiều conversation. Tự động load.</p>
+  <div class="code-head">Memory types (thật từ project này)</div>
+  <pre><span class="hl-c"># user</span>
+<span class="hl-c">-</span> Vietnamese speaker, prefer Vietnamese responses
+<span class="hl-c">-</span> Wants practical working code — not over-explained
+
+<span class="hl-c"># feedback</span>
+<span class="hl-c">-</span> "Unity code checklist" — audit trước commit
+<span class="hl-c">-</span> "Don't change coordinates without asking"
+<span class="hl-c">-</span> "Prefer /team split panes instead of background agents"
+
+<span class="hl-c"># project</span>
+<span class="hl-c">-</span> Physics2D collision matrix must be configured
+<span class="hl-c">-</span> Inactive GOs: transform.Find() not GameObject.Find()
+<span class="hl-c">-</span> Sprites/Default shader (runtime materials stripped in builds)
+<span class="hl-c">-</span> AdMob integration in progress, awaiting device test
+
+<span class="hl-c"># reference</span>
+<span class="hl-c">-</span> Repo: github.com/xgirl2510-ops/rocket-launcher-game
+<span class="hl-c">-</span> Scene auto-setup: Tools &gt; Rocket Launcher &gt; Setup Scene</pre>
+  <div class="callout good">AI không hỏi lại mỗi lần. Feedback corrections được persist — hạn chế lặp lỗi.</div>
+</section>
+
+<!-- 13. Planning /plan skill -->
+<section class="slide">
+  <span class="tag">Planning</span>
+  <h2>Planning trước, code sau — <code>/plan</code> skill</h2>
+  <p class="sub-title">Trước khi implement → gọi <code>/plan</code>. AI đọc docs/, research, tạo plan directory chi tiết.</p>
+  <div class="code-head">plans/260401-1043-rocket-launcher-prototype/</div>
+  <pre><span class="hl-c">├──</span> plan.md                                       <span class="hl-c"># overview, 6 phases</span>
+<span class="hl-c">├──</span> phase-01-project-and-scene-setup.md
+<span class="hl-c">├──</span> phase-02-rocket-physics.md
+<span class="hl-c">├──</span> phase-03-slingshot-input-and-aim-arrow.md
+<span class="hl-c">├──</span> phase-04-camera-follow-system.md
+<span class="hl-c">├──</span> phase-05-game-manager-ui-and-full-loop.md
+<span class="hl-c">└──</span> phase-06-polish-tuning-and-mobile-testing.md</pre>
+  <h3 style="margin-top:20px">Mỗi phase file chứa</h3>
+  <div class="three-col">
+    <div class="feature"><div class="num">CONTEXT</div><div class="fd">Links đến GDD, tech specs, related docs</div></div>
+    <div class="feature"><div class="num">STEPS</div><div class="fd">Hướng dẫn từng bước: tạo GO, set property, attach component</div></div>
+    <div class="feature"><div class="num">TODO LIST</div><div class="fd">Checkbox tracking — AI + dev tick off</div></div>
+    <div class="feature"><div class="num">SUCCESS</div><div class="fd">Definition of done: Play thấy X, bấm Y thấy Z</div></div>
+    <div class="feature"><div class="num">RISK</div><div class="fd">Edge cases, mitigations, rollback plan</div></div>
+    <div class="feature"><div class="num">FILES</div><div class="fd">Create / Modify / Delete — chính xác file paths</div></div>
+  </div>
+</section>
+
+<!-- 14. 6 phases breakdown -->
+<section class="slide">
+  <span class="tag">Planning</span>
+  <h2>Rocket Launcher — 6 phases breakdown</h2>
+  <div class="phase-row head"><div>#</div><div>Phase</div><div>Scripts / Output</div><div>Thời gian</div></div>
+  <div class="phase-row"><div class="pn">1</div><div>Project &amp; Scene Setup</div><div class="muted">Editor tool (4 partials, 895 dòng)</div><div class="accent">Day 1</div></div>
+  <div class="phase-row"><div class="pn">2</div><div>Rocket Physics</div><div class="muted">Rocket.cs — events + Rigidbody2D</div><div class="accent">Day 1</div></div>
+  <div class="phase-row"><div class="pn">3</div><div>Slingshot Input</div><div class="muted">LaunchController, AimArrow</div><div class="accent">Day 1</div></div>
+  <div class="phase-row"><div class="pn">4</div><div>Camera System</div><div class="muted">CameraController + PanCoroutine</div><div class="accent">Day 2</div></div>
+  <div class="phase-row"><div class="pn">5</div><div>Game Loop + UI</div><div class="muted">RoundManager (3 partials) + HUD</div><div class="accent">Day 2</div></div>
+  <div class="phase-row"><div class="pn">6</div><div>Polish + Mobile</div><div class="muted">Effects, audio, crater, trail, shake</div><div class="accent">Day 2-3</div></div>
+  <div class="callout">Sau 3 ngày: game playable end-to-end với placeholder shapes. Day 4-7: code quality, test, AI art, AdMob, iOS build.</div>
+</section>
+
+<!-- 15. Phase 1 - Editor tool -->
+<section class="slide">
+  <span class="tag">Implementation</span>
+  <span class="top-tag">🚀 Phase 1 / 6 — Scene Setup</span>
+  <h2>Editor Tool tự setup toàn bộ Scene</h2>
+  <div class="code-head">Prompt</div>
+  <pre><span class="p">&gt;</span> Tạo Editor Tool auto-setup scene cho Rocket Launcher:
+  - Đọc phase-01 doc trong plans/ làm spec
+  - Tạo GameObjects: Ground, Target, LauncherVehicle (body, cabin,
+    wheels, spawn point), Rocket, Canvas HUD, separators
+  - Tag, Layer, Sorting Layer đúng theo GameConstants
+  - Wire [SerializeField] private refs qua SerializedObject
+  - Menu: Tools &gt; Rocket Launcher &gt; Setup Scene
+  - Modularize thành partial classes (file &lt; 200 dòng)</pre>
+  <div class="two-col" style="margin-top:14px">
+    <div>
+      <h3>Output</h3>
+      <ul>
+        <li>4 partial files, <strong>895 dòng</strong>:</li>
+        <li><code>...auto-setup-editor-tool.cs</code> (entry)</li>
+        <li><code>...environment-and-gameplay-objects.cs</code></li>
+        <li><code>...shared-gameobject-and-sprite-helpers.cs</code></li>
+        <li><code>...ui-canvas-and-hud-elements.cs</code></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Kết quả</h3>
+      <ul class="good">
+        <li class="good">Click menu → toàn bộ scene dựng <strong>trong 2 giây</strong></li>
+        <li class="good">Hierarchy đẹp: "--- ENVIRONMENT ---", "--- GAMEPLAY ---" separators</li>
+        <li class="good">References wire sẵn — Play ngay không cần drag&amp;drop</li>
+        <li class="good">Idempotent — chạy lại không tạo duplicate</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout">AI rất giỏi Editor scripting — API ổn định, pattern rõ, không yêu cầu gameplay feel</div>
+</section>
+
+<!-- 16. Phase 2 Rocket.cs -->
+<section class="slide">
+  <span class="tag">Implementation</span>
+  <span class="top-tag">🚀 Phase 2 / 6 — Physics</span>
+  <h2>Rocket.cs — physics + event-driven</h2>
+  <div class="code-head">Assets/Scripts/Rocket/Rocket.cs (excerpt)</div>
+  <pre><span class="hl-k">public class</span> <span class="hl-t">Rocket</span> : <span class="hl-t">MonoBehaviour</span> {
+    <span class="hl-c">/// &lt;summary&gt;Fired when rocket launched via impulse.&lt;/summary&gt;</span>
+    <span class="hl-k">public event</span> <span class="hl-t">Action</span> OnRocketLaunched;
+    <span class="hl-k">public event</span> <span class="hl-t">Action</span> OnTargetHit;
+    <span class="hl-k">public event</span> <span class="hl-t">Action</span>&lt;<span class="hl-t">Vector2</span>, <span class="hl-k">bool</span>, <span class="hl-k">float</span>&gt; OnImpact;
+
+    <span class="hl-k">public void</span> <span class="hl-f">Launch</span>(<span class="hl-t">Vector2</span> direction, <span class="hl-k">float</span> force) {
+        <span class="hl-k">float</span> angle = <span class="hl-t">Mathf</span>.Atan2(direction.y, direction.x)
+            * <span class="hl-t">Mathf</span>.Rad2Deg + <span class="hl-t">GameConstants</span>.SpriteAngleOffset;
+        transform.rotation = <span class="hl-t">Quaternion</span>.Euler(<span class="hl-n">0</span>, <span class="hl-n">0</span>, angle);
+
+        _rb.bodyType = <span class="hl-t">RigidbodyType2D</span>.Dynamic;
+        _rb.AddForce(direction * force, <span class="hl-t">ForceMode2D</span>.Impulse);
+        _isFlying = <span class="hl-k">true</span>;
+        _maxHeight = transform.position.y;
+
+        <span class="hl-k">if</span> (_trail != <span class="hl-k">null</span>) _trail.StartTrail();
+        OnRocketLaunched?.Invoke();
+    }
+}</pre>
+  <ul>
+    <li>Kinematic khi idle → Dynamic khi Launch → Kinematic lại khi reset</li>
+    <li>Event-driven: <strong>0 dependency</strong> với RoundManager / Camera — chỉ publish events</li>
+    <li>SpriteAngleOffset = <code>-90f</code> trong GameConstants (sprites point UP)</li>
+  </ul>
+</section>
+
+<!-- 17. Event architecture -->
+<section class="slide">
+  <span class="tag">Implementation</span>
+  <span class="top-tag">🚀 Phase 2 / 6 — Architecture</span>
+  <h2>Event-driven architecture — loose coupling</h2>
+  <div class="code-head">Subscribe pattern (trong OnEnable / OnDisable)</div>
+  <pre><span class="hl-c">// RoundManager.cs</span>
+<span class="hl-k">private void</span> <span class="hl-f">OnEnable</span>() {
+    _rocket.OnRocketLaunched += HandleLaunch;
+    _rocket.OnTargetHit      += HandleWin;
+    _rocket.OnImpact         += HandleImpact;
+}
+<span class="hl-k">private void</span> <span class="hl-f">OnDisable</span>() {
+    _rocket.OnRocketLaunched -= HandleLaunch;
+    _rocket.OnTargetHit      -= HandleWin;
+    _rocket.OnImpact         -= HandleImpact;
+}
+
+<span class="hl-c">// CameraController.cs — cũng subscribe nhưng ĐỘC LẬP</span>
+<span class="hl-k">private void</span> <span class="hl-f">OnEnable</span>() {
+    _rocket.OnRocketLaunched += StartFollow;
+    _rocket.OnImpact += (pos, hit, _) =&gt; ReturnToVehicle();
+}</pre>
+  <div class="three-col" style="margin-top:14px">
+    <div class="feature"><div class="num">PUBLISHER</div><div class="ft">Rocket</div><div class="fd">Chỉ publish events, không biết ai subscribe</div></div>
+    <div class="feature"><div class="num">SUBSCRIBERS</div><div class="ft">RoundManager, Camera, Audio, HUD</div><div class="fd">Tự subscribe, tự unsubscribe OnDisable</div></div>
+    <div class="feature"><div class="num">BENEFIT</div><div class="ft">Testable + modular</div><div class="fd">Thêm subscriber mới = 0 thay đổi Rocket.cs</div></div>
+  </div>
+</section>
+
+<!-- 18. Phase 3 Slingshot input -->
+<section class="slide">
+  <span class="tag">Implementation</span>
+  <span class="top-tag">🚀 Phase 3 / 6 — Input</span>
+  <h2>Slingshot Input — drag-aim-release</h2>
+  <div class="split">
+    <div>
+      <h3>LaunchController (Input ONLY)</h3>
+      <pre><span class="hl-k">void</span> <span class="hl-f">Update</span>() {
+  <span class="hl-k">if</span> (<span class="hl-t">Input</span>.GetMouseButtonDown(<span class="hl-n">0</span>))
+    TryStartDrag();
+  <span class="hl-k">if</span> (_dragging) UpdateDrag();
+  <span class="hl-k">if</span> (<span class="hl-t">Input</span>.GetMouseButtonUp(<span class="hl-n">0</span>))
+    Release();
+}
+
+<span class="hl-k">void</span> <span class="hl-f">Release</span>() {
+  <span class="hl-t">Vector2</span> dir = _vehicle.position - _mouseWorld;
+  <span class="hl-k">float</span> force = <span class="hl-t">Mathf</span>.Lerp(
+    <span class="hl-t">GameConstants</span>.MinLaunchForce,
+    <span class="hl-t">GameConstants</span>.MaxLaunchForce,
+    dir.magnitude / MaxDrag);
+  _rocket.Launch(dir.normalized, force);
+}</pre>
+    </div>
+    <div>
+      <h3>AimArrow (Visual only)</h3>
+      <ul>
+        <li>Scale theo force: <code>Vector3.one * (force/max)</code></li>
+        <li>Rotate theo direction: <code>atan2(dir.y, dir.x)</code></li>
+        <li>Hiện chỉ khi <code>_dragging == true</code></li>
+        <li>Disable khi rocket đang bay</li>
+      </ul>
+      <h3 style="margin-top:18px">Nguyên tắc SRP</h3>
+      <ul class="good">
+        <li class="good">Input ở Update()</li>
+        <li class="good">Physics ở FixedUpdate()</li>
+        <li class="good">Camera ở LateUpdate()</li>
+      </ul>
+      <div class="callout">LaunchController không biết gì về UI / Audio / Camera — chỉ gọi <code>rocket.Launch()</code></div>
+    </div>
+  </div>
+</section>
+
+<!-- 19. Phase 4 Camera -->
+<section class="slide">
+  <span class="tag">Implementation</span>
+  <span class="top-tag">🚀 Phase 4 / 6 — Camera</span>
+  <h2>Camera — intro pan → follow → return</h2>
+  <div class="two-col">
+    <div>
+      <h3>State machine</h3>
+      <div class="term"><span class="i">INTRO_PAN</span>  <span class="m">→ at game start</span>
+  pan từ Target → Vehicle (2s)
+  <span class="p">↓</span>
+<span class="i">IDLE</span>       <span class="m">→ đợi player launch</span>
+  camera đứng yên tại Vehicle
+  <span class="p">↓</span>  <span class="m">OnRocketLaunched</span>
+<span class="i">FOLLOW</span>     <span class="m">→ rocket đang bay</span>
+  smooth follow với lerp 0.1
+  <span class="p">↓</span>  <span class="m">OnImpact (hit OR miss)</span>
+<span class="i">RETURN</span>     <span class="m">→ về Vehicle (1s)</span>
+  coroutine pan với easeInOut
+  <span class="p">↓</span>
+<span class="i">IDLE</span>       <span class="m">(reset, vòng lặp)</span></div>
+    </div>
+    <div>
+      <h3>DRY helper — PanCoroutine</h3>
+      <pre><span class="hl-k">IEnumerator</span> <span class="hl-f">PanCoroutine</span>(
+    <span class="hl-t">Vector3</span> from, <span class="hl-t">Vector3</span> to,
+    <span class="hl-k">float</span> duration,
+    <span class="hl-t">Action</span> onComplete = <span class="hl-k">null</span>) {
+  <span class="hl-k">float</span> t = <span class="hl-n">0</span>;
+  <span class="hl-k">while</span> (t &lt; duration) {
+    t += <span class="hl-t">Time</span>.deltaTime;
+    <span class="hl-k">float</span> k = EaseInOut(t / duration);
+    transform.position =
+      <span class="hl-t">Vector3</span>.Lerp(from, to, k);
+    <span class="hl-k">yield return</span> <span class="hl-k">null</span>;
+  }
+  onComplete?.Invoke();
+}</pre>
+      <div class="callout">1 helper → dùng cho cả 3 state transitions. DRY theo đúng KISS.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 20. Phase 5 RoundManager -->
+<section class="slide">
+  <span class="tag">Implementation</span>
+  <span class="top-tag">🚀 Phase 5 / 6 — Game Loop</span>
+  <h2>RoundManager — partial class, 3 files</h2>
+  <p class="sub-title">God class split preventively — mỗi file &lt; 200 dòng, 1 concern.</p>
+  <div class="three-col">
+    <div class="feature">
+      <div class="num">RoundManager.cs</div>
+      <div class="ft">Core state</div>
+      <div class="fd">State machine: WAITING → AIMING → FLYING → HIT/MISS → RESTART. Event subscriptions.</div>
+    </div>
+    <div class="feature">
+      <div class="num">auto-play-restart-and-target.cs</div>
+      <div class="ft">Game flow</div>
+      <div class="fd">Auto-play demo (2-5s repeat), random target spawn (X: 8-35, Y: -4 to 10), restart logic</div>
+    </div>
+    <div class="feature">
+      <div class="num">round-manager-hud.cs</div>
+      <div class="ft">UI updates</div>
+      <div class="fd">Win text, restart button, shots counter, hints (after 5 misses), best score</div>
+    </div>
+  </div>
+  <div class="code-head" style="margin-top:18px">State transitions (simplified)</div>
+  <pre><span class="hl-k">enum</span> <span class="hl-t">RoundState</span> { Waiting, Aiming, Flying, Hit, Miss, Restart }
+
+<span class="hl-k">void</span> <span class="hl-f">HandleLaunch</span>()  { State = <span class="hl-t">RoundState</span>.Flying; _shots++; }
+<span class="hl-k">void</span> <span class="hl-f">HandleWin</span>()     { State = <span class="hl-t">RoundState</span>.Hit;    ShowWinUI(); SaveScore(); }
+<span class="hl-k">void</span> <span class="hl-f">HandleMiss</span>()    { State = <span class="hl-t">RoundState</span>.Miss;   Invoke(<span class="hl-s">"AutoRestart"</span>, <span class="hl-n">2f</span>); }</pre>
+</section>
+
+<!-- 21. Phase 6 Polish -->
+<section class="slide">
+  <span class="tag">Implementation</span>
+  <span class="top-tag">🚀 Phase 6 / 6 — Polish</span>
+  <h2>Polish — debris, trail, shake, crater</h2>
+  <div class="feature-grid">
+    <div class="feature"><div class="num">🔥 Trail</div><div class="ft">Particle gradient</div><div class="fd">Red (gần rocket) → orange (mid) → dark grey smoke (tail). 3 material blend.</div></div>
+    <div class="feature"><div class="num">💥 Debris</div><div class="ft">Physics shatter</div><div class="fd">8-12 pieces spawn OnImpact, rigidbody2D + random torque, max 100 cap</div></div>
+    <div class="feature"><div class="num">📳 Screen shake</div><div class="ft">Extracted component</div><div class="fd">ScreenShakeComponent độc lập, intensity từ impact velocity</div></div>
+    <div class="feature"><div class="num">🕳 Crater</div><div class="ft">SpriteMask trick</div><div class="fd">Mask-out ground sprite tại impact point, debris rơi vào lỗ tự nhiên</div></div>
+    <div class="feature"><div class="num">🧱 Obstacles</div><div class="ft">Trajectory solver</div><div class="fd">Parabolic math tự tránh đường bay rocket — 2-4 obstacles/round</div></div>
+    <div class="feature"><div class="num">💡 Hints</div><div class="ft">Beginner friendly</div><div class="fd">Sau 5 misses hiện hint "tăng/giảm góc, force". Reset khi win.</div></div>
+  </div>
+  <div class="callout good"><strong>Tất cả cleanup đúng:</strong> OnDestroy cancel coroutines · max debris cap · max scorch marks 20 · zero GPU leak</div>
+</section>
+
+<!-- 22. Audio -->
+<section class="slide">
+  <span class="tag">Implementation</span>
+  <h2>Audio — procedural + MP3 mixed</h2>
+  <div class="two-col">
+    <div>
+      <h3>AudioManager singleton</h3>
+      <ul>
+        <li>Lazy-init: <code>Instance</code> tự tạo nếu null</li>
+        <li><strong>Graceful fallback:</strong> MP3 missing → procedural synth</li>
+        <li>MP3 events: launch, thrust loop, hit, boom</li>
+        <li>Procedural: stretch, click, win jingle, target hit</li>
+        <li>44100Hz waveform synthesis (sine + noise + envelope)</li>
+        <li>Pitch randomization để tránh fatigue</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Prompt &amp; result</h3>
+      <div class="code-head">Prompt</div>
+      <pre><span class="p">&gt;</span> Tạo AudioManager singleton
+với graceful fallback nếu MP3
+file missing — dùng procedural
+synthesis thay thế. KHÔNG crash.</pre>
+      <div class="callout good" style="margin-top:12px"><strong>Kết quả:</strong> 0 crash trên build thiếu audio file. Dev ship binary không audio vẫn chạy được.</div>
+    </div>
+  </div>
+  <div class="callout muted" style="margin-top:14px">Bug từng gặp (commit 747c0ff): audio pitch leak ở Editor reload → AI thêm OnDestroy cleanup + reset pitch</div>
+</section>
+
+<!-- 23. Obstacles trajectory -->
+<section class="slide">
+  <span class="tag">Implementation</span>
+  <h2>Obstacles — trajectory solver</h2>
+  <p class="sub-title">Vấn đề: obstacle không được chặn đường bay rocket (không đánh đố player).</p>
+  <div class="code-head">AI đọc Unity physics docs + tự derive công thức</div>
+  <pre><span class="hl-c">// Parabolic trajectory: tìm Y tại X trên quỹ đạo rocket</span>
+<span class="hl-k">float</span> <span class="hl-f">TrajectoryYAtX</span>(<span class="hl-k">float</span> x, <span class="hl-t">Vector2</span> launchPos,
+                      <span class="hl-t">Vector2</span> dir, <span class="hl-k">float</span> velocity) {
+    <span class="hl-k">float</span> vx = dir.x * velocity;
+    <span class="hl-k">float</span> vy = dir.y * velocity;
+    <span class="hl-k">float</span> t  = (x - launchPos.x) / vx;         <span class="hl-c">// thời gian đến X</span>
+    <span class="hl-k">float</span> g  = <span class="hl-t">Physics2D</span>.gravity.y;            <span class="hl-c">// -9.81f</span>
+    <span class="hl-k">return</span> launchPos.y + vy * t + <span class="hl-n">0.5f</span> * g * t * t;
+}
+
+<span class="hl-c">// Spawn strategy: above safe zone OR below safe zone</span>
+<span class="hl-k">bool</span> <span class="hl-f">IsSafeSpawn</span>(<span class="hl-t">Vector2</span> obstaclePos) {
+    <span class="hl-k">float</span> trajY = TrajectoryYAtX(obstaclePos.x, ...);
+    <span class="hl-k">return</span> <span class="hl-t">Mathf</span>.Abs(obstaclePos.y - trajY) &gt; SafeBuffer;
+}</pre>
+  <div class="callout good"><strong>Dev không tự viết công thức</strong> — AI đọc Physics2D.gravity docs + parabola math tự derive. Unit test xác nhận solver đúng 11/11.</div>
+</section>
+
+<!-- 24. Art AI-generated -->
+<section class="slide">
+  <span class="tag">Asset pipeline</span>
+  <h2>Art — AI-generated sprites</h2>
+  <p class="sub-title">Pipeline: prompt library → KlingAI / Nano Banana → PNG → import Unity.</p>
+  <div class="two-col">
+    <div>
+      <h3>docs/graphic/prompt/ library</h3>
+      <ul>
+        <li><code>rocket.md</code> — idle + flying + exploding states</li>
+        <li><code>target.md</code></li>
+        <li><code>obstacles.md</code></li>
+        <li><code>slingshot-launcher.md</code></li>
+        <li><code>ground.md</code></li>
+        <li><code>sky-background.md</code></li>
+        <li><code>full-game-scene-mockup.md</code></li>
+      </ul>
+      <h3 style="margin-top:14px">Art style locked</h3>
+      <ul>
+        <li>3D matte toy vinyl style</li>
+        <li>Thick dark navy outlines (#1A237E)</li>
+        <li>Cel shading, bright cheerful colors</li>
+        <li>Transparent PNG, front view</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Prompt thật — Rocket Idle</h3>
+      <div class="code-head">docs/graphic/prompt/rocket.md</div>
+      <pre style="font-size:11px">cartoon 2D game rocket sprite,
+tall slender elongated retro
+rocket shape, 4:1 height-to-
+width ratio, smooth glossy
+warm orange (#FFA726) body,
+deep red (#EF5350) pointed
+cone nose, 3 deep red swept-
+back fins at base, small
+round sky blue (#4FC3F7)
+porthole window with cloud
+white reflection highlight,
+rivet stud details along
+body seams, soft 3D render
+style, thick dark navy
+(#1A237E) outlines, cel
+shading, bright cheerful
+colors, white background,
+transparent PNG, front view</pre>
+    </div>
+  </div>
+</section>
+
+<!-- 25. Code quality 7 rounds -->
+<section class="slide">
+  <span class="tag">Quality</span>
+  <h2>Code quality — 7 rounds code review</h2>
+  <p class="sub-title"><code>code-reviewer</code> agent chạy 7 lần. 26 reports lưu trong <code>plans/reports/</code>.</p>
+  <div class="stat-row">
+    <div class="stat-card orange"><div class="n">6.5</div><div class="l">Round 1<br>initial audit</div></div>
+    <div class="stat-card orange"><div class="n">7.4</div><div class="l">Round 3<br>world-class audit</div></div>
+    <div class="stat-card"><div class="n">8.5</div><div class="l">Round 5<br>post-refactor</div></div>
+    <div class="stat-card green"><div class="n">9.0</div><div class="l">Round 6<br>post-fix</div></div>
+    <div class="stat-card green"><div class="n">9.5</div><div class="l">Round 7<br>definitive</div></div>
+  </div>
+  <h3 style="margin-top:14px">Mỗi round audit những gì</h3>
+  <div class="feature-grid">
+    <div class="feature"><div class="num">SRP</div><div class="fd">Single Responsibility — god class detection</div></div>
+    <div class="feature"><div class="num">DRY</div><div class="fd">Duplicate code, magic numbers</div></div>
+    <div class="feature"><div class="num">MEMORY</div><div class="fd">Texture leak, coroutine race, static corruption</div></div>
+    <div class="feature"><div class="num">UNITY-IDIOMS</div><div class="fd">OnValidate, Undo support, domain reload</div></div>
+    <div class="feature"><div class="num">NULL SAFETY</div><div class="fd">Null guards fail-fast vs silent</div></div>
+    <div class="feature"><div class="num">PERFORMANCE</div><div class="fd">GC alloc, FixedUpdate cost, draw call</div></div>
+  </div>
+</section>
+
+<!-- 26. Refactoring god class -->
+<section class="slide">
+  <span class="tag">Quality</span>
+  <h2>Refactoring — God class split</h2>
+  <div class="split">
+    <div>
+      <div class="code-head red">TRƯỚC: 1 file 500+ dòng</div>
+      <pre><span class="hl-c">// RoundManager.cs</span>
+<span class="hl-k">public class</span> <span class="hl-t">RoundManager</span> {
+  <span class="hl-k">void</span> <span class="hl-f">Start</span>() {...}
+  <span class="hl-k">void</span> <span class="hl-f">HandleLaunch</span>() {...}
+  <span class="hl-k">void</span> <span class="hl-f">HandleWin</span>() {...}
+  <span class="hl-k">void</span> <span class="hl-f">HandleMiss</span>() {...}
+  <span class="hl-k">void</span> <span class="hl-f">AutoPlay</span>() {...}
+  <span class="hl-k">void</span> <span class="hl-f">SpawnTarget</span>() {...}
+  <span class="hl-k">void</span> <span class="hl-f">Restart</span>() {...}
+  <span class="hl-k">void</span> <span class="hl-f">UpdateHUD</span>() {...}
+  <span class="hl-k">void</span> <span class="hl-f">ShowHints</span>() {...}
+  <span class="hl-k">void</span> <span class="hl-f">SaveScore</span>() {...}
+  <span class="hl-c">// ... 500 dòng</span>
+}
+</pre>
+      <div class="callout warn">Khó test, khó đọc, một thay đổi HUD ảnh hưởng state logic</div>
+    </div>
+    <div>
+      <div class="code-head green">SAU: 3 partial files</div>
+      <pre><span class="hl-c">// RoundManager.cs (core)</span>
+<span class="hl-k">public partial class</span> <span class="hl-t">RoundManager</span> {
+  <span class="hl-t">RoundState</span> _state;
+  <span class="hl-k">void</span> <span class="hl-f">HandleLaunch</span>() {...}
+}
+
+<span class="hl-c">// round-manager-auto-play-</span>
+<span class="hl-c">// restart-and-target.cs</span>
+<span class="hl-k">public partial class</span> <span class="hl-t">RoundManager</span> {
+  <span class="hl-k">IEnumerator</span> <span class="hl-f">AutoPlay</span>() {...}
+  <span class="hl-k">void</span> <span class="hl-f">SpawnTarget</span>() {...}
+}
+
+<span class="hl-c">// round-manager-hud.cs</span>
+<span class="hl-k">public partial class</span> <span class="hl-t">RoundManager</span> {
+  <span class="hl-k">void</span> <span class="hl-f">UpdateHUD</span>() {...}
+  <span class="hl-k">void</span> <span class="hl-f">ShowHints</span>() {...}
+}</pre>
+      <div class="callout good">Partial class = 1 MonoBehaviour, 3 files. Test riêng từng concern.</div>
+    </div>
+  </div>
+  <div class="callout" style="margin-top:14px">Extracted cùng dịp: <code>RuntimeSpriteFactory</code>, <code>PanCoroutine</code>, <code>ScreenShakeComponent</code>, <code>GameRoundTracker</code></div>
+</section>
+
+<!-- 27. Testing -->
+<section class="slide">
+  <span class="tag">Quality</span>
+  <h2>Testing — 61 unit tests + CI pipeline</h2>
+  <p class="sub-title"><code>tester</code> agent triển khai Arrange-Act-Assert. 100% pass trước commit.</p>
+  <table>
+    <tr><th>Test file</th><th>Tests</th><th>Cover</th></tr>
+    <tr><td><code>game-constants-validation-tests.cs</code></td><td class="accent">6</td><td>Constants không conflict, ranges hợp lệ</td></tr>
+    <tr><td><code>game-round-tracker-tests.cs</code></td><td class="accent">11</td><td>State transitions, score tracking</td></tr>
+    <tr><td><code>ground-scorch-tests.cs</code></td><td class="accent">13</td><td>Crater spawn, GetGroundY, max cap</td></tr>
+    <tr><td><code>obstacle-spawner-trajectory-tests.cs</code></td><td class="accent">11</td><td>Parabolic solver, safe spawn strategy</td></tr>
+    <tr><td><code>rocket-debris-spawn-and-cleanup-tests.cs</code></td><td class="accent">11</td><td>Debris spawn count, cleanup timing</td></tr>
+    <tr><td><code>rocket-physics-tests.cs</code></td><td class="accent">11</td><td>Launch force, rotation, state changes</td></tr>
+    <tr><td><code>round-manager-state-transition-tests.cs</code></td><td class="accent">11</td><td>WAITING → AIMING → FLYING → HIT/MISS</td></tr>
+  </table>
+  <div class="callout good" style="margin-top:12px"><strong>CI:</strong> GitHub Actions auto-run trên mỗi push. Red build = block merge. Setup 1 prompt → AI tạo workflow YAML + runner config.</div>
+</section>
+
+<!-- 28. GameConstants SSOT -->
+<section class="slide">
+  <span class="tag">Quality</span>
+  <h2>GameConstants — zero magic numbers</h2>
+  <div class="code-head">Assets/Scripts/Core/GameConstants.cs</div>
+  <pre><span class="hl-k">public static class</span> <span class="hl-t">GameConstants</span> {
+    <span class="hl-c">/// &lt;summary&gt;World Y position of the ground surface.&lt;/summary&gt;</span>
+    <span class="hl-k">public const float</span> GroundTop = <span class="hl-n">-5f</span>;
+
+    <span class="hl-c">/// &lt;summary&gt;Tag applied to the ground GameObject.&lt;/summary&gt;</span>
+    <span class="hl-k">public const string</span> TagGround  = <span class="hl-s">"Ground"</span>;
+    <span class="hl-k">public const string</span> TagTarget  = <span class="hl-s">"Target"</span>;
+
+    <span class="hl-c">/// &lt;summary&gt;Minimum launch force (slingshot fully relaxed).&lt;/summary&gt;</span>
+    <span class="hl-k">public const float</span> MinLaunchForce = <span class="hl-n">5f</span>;
+    <span class="hl-k">public const float</span> MaxLaunchForce = <span class="hl-n">30f</span>;
+
+    <span class="hl-c">/// &lt;summary&gt;Unity layer index for the Rocket (user layer 8).&lt;/summary&gt;</span>
+    <span class="hl-k">public const int</span> RocketLayer      = <span class="hl-n">8</span>;
+    <span class="hl-k">public const int</span> ObstacleLayer    = <span class="hl-n">9</span>;
+    <span class="hl-k">public const string</span> SortingLayerGameplay = <span class="hl-s">"Gameplay"</span>;
+
+    <span class="hl-c">/// &lt;summary&gt;Height threshold below which a crater is spawned.&lt;/summary&gt;</span>
+    <span class="hl-k">public const float</span> CraterSpawnHeightThreshold = <span class="hl-n">1.5f</span>;
+    <span class="hl-k">public const float</span> SpriteAngleOffset = <span class="hl-n">-90f</span>;
+}</pre>
+  <div class="three-col" style="margin-top:10px">
+    <div class="feature"><div class="num">XML DOCS</div><div class="fd">Trên mọi public member (v1.0.1 compliance)</div></div>
+    <div class="feature"><div class="num"># GUARD</div><div class="fd"><code>#if UNITY_EDITOR || DEVELOPMENT_BUILD</code> quanh Debug.LogError</div></div>
+    <div class="feature"><div class="num">SSOT</div><div class="fd">Zero duplicate constants. Sửa 1 chỗ → cả codebase update.</div></div>
+  </div>
+</section>
+
+<!-- 29. Debug crater -->
+<section class="slide">
+  <span class="tag">Debugging</span>
+  <h2>Debug war story — Crater không hiện</h2>
+  <div class="term"><span class="p">&gt;</span> Bug: rocket nổ xong không thấy crater. Debris rớt vào "lỗ ảo".
+  Ground sprite vẫn bình thường, không bị mask.
+
+<span class="i">🔍</span> Đọc GroundScorch.cs, Rocket.cs, RoundManager.cs,
+   SceneSetupTool.cs (environment partial)...
+
+<span class="i">📋</span> Root cause:
+   - <span class="e">GroundScorch.groundRef</span> chỉ wire qua SceneSetupTool
+   - Nếu scene tạo manual (không qua tool) → ref = null
+   - null check silent → skip crater creation, không log error
+   - Dev không biết vì "không có gì crash"
+
+<span class="i">🔧</span> Fix (commit <span class="p">1a978b7</span>):
+   1. Fallback: <span class="p">GameObject.Find("Ground")</span> KHI ref null
+   2. Chỉ dùng Find làm fallback — runtime vẫn dùng serialized ref
+   3. Thêm Debug.LogWarning khi fallback kicked in
+   4. Guard <span class="p">#if UNITY_EDITOR</span> cho LogWarning
+
+<span class="p">✅</span> 1 file sửa, 5 dòng thêm. Crater hiện lại.
+   Time: ~5 phút (AI đọc 4 files song song).
+   Tự viết: ~30 phút (đọc từng file tuần tự).</div>
+</section>
+
+<!-- 30. Debug subtle bugs -->
+<section class="slide">
+  <span class="tag">Debugging</span>
+  <h2>Các bug subtle AI tự phát hiện</h2>
+  <p class="sub-title">Commits <code>2290cfd</code>, <code>747c0ff</code>, <code>d30e532</code>, <code>f1302df</code> — không ai report bug, AI tự audit ra.</p>
+  <div class="feature-grid">
+    <div class="feature"><div class="num r">🔥 STATIC LEAK</div><div class="ft">Domain reload corrupt</div><div class="fd"><code>static</code> field giữ reference GameObject. Editor reload → ref stale. Fix: <code>[RuntimeInitializeOnLoadMethod]</code> reset.</div></div>
+    <div class="feature"><div class="num r">💧 TEXTURE LEAK</div><div class="ft">GPU memory growth</div><div class="fd">RuntimeSpriteFactory cache texture nhưng không <code>Destroy</code> ở OnDestroy. Editor reload 10 lần → 10x texture.</div></div>
+    <div class="feature"><div class="num r">🏃 COROUTINE RACE</div><div class="ft">NullRef on restart</div><div class="fd">Coroutine chạy tiếp sau scene unload → access destroyed object. Fix: <code>StopAllCoroutines()</code> trong OnDestroy.</div></div>
+    <div class="feature"><div class="num r">🎵 AUDIO PITCH LEAK</div><div class="ft">Sound méo sau reload</div><div class="fd">AudioSource.pitch modified không reset. Editor reload giữ pitch cũ. Fix: OnDisable reset về 1.0.</div></div>
+    <div class="feature"><div class="num r">⏰ UNCANCELLED INVOKE</div><div class="ft">Ghost callbacks</div><div class="fd"><code>Invoke("AutoRestart", 2f)</code> không cancel khi manual restart. Double invoke. Fix: <code>CancelInvoke()</code>.</div></div>
+    <div class="feature"><div class="num r">🔒 NULL GUARD SILENT</div><div class="ft">Hide real bugs</div><div class="fd">Null check <code>?.</code> silent hide misconfiguration. Fix: fail-fast pattern — <code>Assert.IsNotNull</code> ở Awake.</div></div>
+  </div>
+  <div class="callout good">AI đọc Unity lifecycle docs + nhận pattern. Dev senior cũng mất 2-3 năm mới quen hết các corner case này.</div>
+</section>
+
+<!-- 31. AdMob -->
+<section class="slide">
+  <span class="tag">Monetization</span>
+  <h2>AdMob interstitial — plan mới nhất</h2>
+  <p class="sub-title">Plan <code>260408-1645-admob-interstitial-ads-integration/</code> — 4 phases, đang device test.</p>
+  <table>
+    <tr><th>#</th><th>Phase</th><th>Output</th><th>Status</th></tr>
+    <tr><td>1</td><td>Install Google Mobile Ads SDK v9</td><td>Packages/manifest.json updated</td><td><span class="badge">Done</span></td></tr>
+    <tr><td>2</td><td>AdManager singleton</td><td><code>Scripts/Ads/AdManager.cs</code></td><td><span class="badge">Done</span></td></tr>
+    <tr><td>3</td><td>Integrate RoundManager ad flow</td><td>Hook vào <code>OnRoundComplete</code> event</td><td><span class="badge">Done</span></td></tr>
+    <tr><td>4</td><td>Test trên device iOS</td><td>TestFlight validation</td><td><span class="badge o">In progress</span></td></tr>
+  </table>
+  <div class="code-head" style="margin-top:14px">Ad logic</div>
+  <pre><span class="hl-c">// Round 1 complete → show interstitial</span>
+<span class="hl-c">// Sau đó every 2 completed rounds (round 3, 5, 7...)</span>
+<span class="hl-k">bool</span> <span class="hl-f">ShouldShowAd</span>(<span class="hl-k">int</span> round) =&gt;
+    round == <span class="hl-n">1</span> || (round &gt; <span class="hl-n">1</span> &amp;&amp; (round - <span class="hl-n">1</span>) % <span class="hl-n">2</span> == <span class="hl-n">0</span>);
+
+<span class="hl-c">// Test ID vs Production ID separated in GameConstants</span>
+#<span class="hl-k">if</span> UNITY_EDITOR || DEVELOPMENT_BUILD
+    <span class="hl-k">public const string</span> InterstitialId = <span class="hl-s">"ca-app-pub-3940256099942544/4411468910"</span>; <span class="hl-c">// test</span>
+#<span class="hl-k">else</span>
+    <span class="hl-k">public const string</span> InterstitialId = <span class="hl-s">"ca-app-pub-9025216789293973/2777089224"</span>; <span class="hl-c">// production</span>
+#<span class="hl-k">endif</span></pre>
+</section>
+
+<!-- 32. iOS TestFlight -->
+<section class="slide">
+  <span class="tag">Release</span>
+  <h2>iOS TestFlight — ship pipeline</h2>
+  <div class="two-col">
+    <div>
+      <h3>Cấu hình (commit <code>257adef</code>)</h3>
+      <ul>
+        <li>Bundle ID: <code>com.xgirl2510.rocketlauncher</code></li>
+        <li>iOS minimum: 13.0</li>
+        <li>Scripting backend: IL2CPP</li>
+        <li>Target architectures: ARM64</li>
+        <li>Privacy manifest đầy đủ (AdMob required)</li>
+        <li>App Transport Security: configured</li>
+      </ul>
+      <h3 style="margin-top:14px">Physics2D (commit <code>09492af</code>)</h3>
+      <ul>
+        <li>Collision matrix: Rocket (8) vs Obstacle (9) ON</li>
+        <li>Rocket vs Rocket OFF (friendly fire)</li>
+        <li>Default vs Rocket ON cho ground collision</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Build → submit pipeline</h3>
+      <div class="term"><span class="m">1.</span> Unity → Build iOS → Xcode project
+<span class="m">2.</span> Xcode → Archive → Validate
+<span class="m">3.</span> Upload App Store Connect
+<span class="m">4.</span> Auto processing (10-30 phút)
+<span class="m">5.</span> TestFlight → internal testers
+<span class="m">6.</span> Smoke test: drag → launch →
+    ad shows → restart</div>
+      <div class="callout" style="margin-top:14px">AI không thao tác Xcode trực tiếp — dev vẫn phải archive, upload. AI setup ProjectSettings.asset đúng config để build không fail.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 33. Workflow recap -->
+<section class="slide">
+  <span class="tag">Mindset</span>
+  <h2>Workflow: plan → code → review → test → ship</h2>
+  <div class="term"><span class="i">①</span> <span class="p">/plan</span>       → đọc docs/, research → tạo plan.md + phase files
+             → Approve plan (EXIT plan mode)
+
+<span class="i">②</span> <span class="p">Implement</span>   → phase by phase, AI sinh code tuân CLAUDE.md
+             → Mỗi prompt = 1 scope 10-30 phút
+             → Compile check sau mỗi file mới
+
+<span class="i">③</span> <span class="p">/research</span>   → khi gặp vấn đề kỹ thuật phức tạp
+             → spawn multiple researcher agents song song
+
+<span class="i">④</span> <span class="p">code-reviewer</span> → audit mỗi milestone (6-7 rounds)
+             → Report lưu plans/reports/{type}-{date}-{slug}.md
+
+<span class="i">⑤</span> <span class="p">tester</span>       → chạy unit tests, báo failing → fix → chạy lại
+             → Không skip fail để pass build
+
+<span class="i">⑥</span> <span class="p">debugger</span>     → trace root cause khi bug
+             → Đọc N files song song, reason cause
+
+<span class="i">⑦</span> <span class="p">docs-manager</span> → update codebase-summary, changelog, roadmap
+
+<span class="i">⑧</span> <span class="p">git commit</span>   → conventional format (feat:, fix:, refactor:...)
+             → Pre-commit hooks run lint</div>
+</section>
+
+<!-- 34. Lessons learned -->
+<section class="slide">
+  <span class="tag">Bài học</span>
+  <h2>5 bài học từ Rocket Launcher</h2>
+  <div class="lesson"><div class="k">① CLAUDE.md</div><div class="v"><strong>Bộ não quan trọng nhất.</strong> Viết kỹ convention + "KHÔNG LÀM" ngay từ đầu → tiết kiệm 80% iterate. AI tuân thủ xuyên suốt, không cần nhắc.</div></div>
+  <div class="lesson"><div class="k">② docs/ = SSOT</div><div class="v"><strong>Spec càng rõ, code càng đúng ngay lần đầu.</strong> GDD, tech specs, scene guide → AI đọc → sinh code match kiến trúc. Update spec trước khi code.</div></div>
+  <div class="lesson"><div class="k">③ Chia nhỏ task</div><div class="v"><strong>Mỗi prompt 1 scope rõ 10-30 phút.</strong> "Làm hệ thống combat" = quá rộng. "Tạo Rocket.cs — physics + events theo phase-02 doc" = vừa đủ.</div></div>
+  <div class="lesson"><div class="k">④ Trust but verify</div><div class="v"><strong>AI đúng 90%, luôn review 10% còn lại.</strong> 7 rounds code review không thừa. 61 unit tests catch subtle bugs mà eye review miss.</div></div>
+  <div class="lesson"><div class="k">⑤ MCP Unity</div><div class="v"><strong>Game-changer cho Unity workflow.</strong> AI thao tác Editor, đọc Console, chạy tests. Dev chỉ thao tác khi cần gameplay feel (prefab variant, animation curves).</div></div>
+</section>
+
+<!-- 35. Limits honest -->
+<section class="slide">
+  <span class="tag">Thực tế</span>
+  <h2>Giới hạn — bức tranh trung thực</h2>
+  <div class="stat-row">
+    <div class="stat-card red"><div class="n">1.7x</div><div class="l">nhiều lỗi hơn<br>nếu không review</div></div>
+    <div class="stat-card red"><div class="n">45%</div><div class="l">code AI chứa<br>lỗ hổng security</div></div>
+    <div class="stat-card orange"><div class="n">3x</div><div class="l">readability<br>tệ hơn code viết tay</div></div>
+    <div class="stat-card orange"><div class="n">19.7%</div><div class="l">package ảo<br>(hallucinated imports)</div></div>
+  </div>
+  <ul style="margin-top:10px">
+    <li class="bad">AI không hiểu gameplay feel — "đạn thiếu punch", "jump float quá" cần con người</li>
+    <li class="bad">MCP Unity không thao tác animation curves, prefab variants, particle curves</li>
+    <li class="bad">METR study: dev giàu kinh nghiệm <strong>chậm 19%</strong> với AI do review time</li>
+    <li class="bad">45% dev nói debug code AI tốn hơn tự viết — <strong>kỹ năng prompt quyết định</strong></li>
+    <li class="good">→ Không phải thay thế dev. Là <strong>multiplier</strong> cho dev biết mình muốn gì.</li>
+  </ul>
+</section>
+
+<!-- 36. CTA + Q&A -->
+<section class="slide title-slide">
+  <div class="icon">🎯</div>
+  <h1>Q&amp;A + Get started</h1>
+  <div style="max-width:800px;margin-top:30px">
+    <div class="lesson"><div class="k">Chi phí?</div><div class="v">Claude Pro $20/tháng đủ cho indie · Max $100-200 cho power user · ~$0.67/ngày</div></div>
+    <div class="lesson"><div class="k">Code AI có bug?</div><div class="v">1.7x nhiều hơn — LUÔN review + unit test. 61 tests catch hầu hết subtle bugs.</div></div>
+    <div class="lesson"><div class="k">Multiplayer?</div><div class="v">Logic + protocol OK. Netcode cần kinh nghiệm dev — AI support tốt khi dev đã biết.</div></div>
+    <div class="lesson"><div class="k">Bắt đầu từ đâu?</div><div class="v">① Cài Claude Code · ② Tạo CLAUDE.md · ③ Viết docs/game-design-document.md · ④ <code>/plan</code> · ⑤ 1 task nhỏ · ⑥ iterate</div></div>
+  </div>
+  <div class="meta" style="margin-top:40px">github.com/xgirl2510-ops/rocket-launcher-game · 2026</div>
+</section>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+let idx = 0;
+const total = slides.length;
+document.getElementById('total').textContent = total;
+
+function show(i) {
+  slides[idx].classList.remove('active');
+  idx = Math.max(0, Math.min(total - 1, i));
+  slides[idx].classList.add('active');
+  document.getElementById('cur').textContent = idx + 1;
+  document.getElementById('progress').style.width = ((idx + 1) / total * 100) + '%';
+  window.location.hash = '#' + (idx + 1);
+}
+
+// init from hash
+const hashIdx = parseInt(window.location.hash.replace('#','')) - 1;
+if (!isNaN(hashIdx) && hashIdx >= 0 && hashIdx < total) {
+  slides[0].classList.remove('active');
+  idx = hashIdx;
+  slides[idx].classList.add('active');
+  document.getElementById('cur').textContent = idx + 1;
+  document.getElementById('progress').style.width = ((idx + 1) / total * 100) + '%';
+} else {
+  document.getElementById('progress').style.width = (1 / total * 100) + '%';
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown' || e.key === 'j' || e.key === 'l') { show(idx + 1); e.preventDefault(); }
+  if (e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'k' || e.key === 'h') { show(idx - 1); e.preventDefault(); }
+  if (e.key === 'Home') show(0);
+  if (e.key === 'End') show(total - 1);
+  if (e.key === 'f' || e.key === 'F') {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+    else document.exitFullscreen();
+  }
+});
+
+document.addEventListener('click', (e) => {
+  if (e.target.closest('a, button, pre, code, .term')) return;
+  if (e.clientX > window.innerWidth / 2) show(idx + 1);
+  else show(idx - 1);
+});
+</script>
+</body>
+</html>

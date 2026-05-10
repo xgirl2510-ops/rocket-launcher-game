@@ -40,6 +40,9 @@ namespace RocketLauncher.Editor
         private const string RocketSpritePath = "Assets/Sprites/Generated/rocket2.png";
         private const string LauncherSpritePath = "Assets/Sprites/Generated/car2.png";
         private const string GroundSpritePath = "Assets/Sprites/Generated/ground.png";
+        // target.png 2103×479 @ PPU 100 → world width 21.03; scale 0.27 → 5.68 unit (~60% larger than jets).
+        private const string TargetSpritePath = "Assets/Sprites/Generated/target.png";
+        private const float TargetVisualScale = 0.27f;
 
         // Step 3: Vehicle sits ON ground — car2.png (1462x780 @ PPU 100)
         private const float VehicleVisualScale = 0.24f;
@@ -70,11 +73,44 @@ namespace RocketLauncher.Editor
             groundSr.sprite = LoadSpriteFromPng(GroundSpritePath, 16384);
             groundSr.sortingLayerName = "Environment";
 
-            var target = CreateSprite("Target", parent,
-                new Vector3(TargetX, TargetY, 0f), new Vector3(1.5f, TargetScaleY, 1f),
-                Hex("#FF0000"), "Gameplay");
+            var target = CreateEmpty("Target", parent);
+            target.transform.position = new Vector3(TargetX, TargetY, 0f);
+            target.transform.localScale = new Vector3(TargetVisualScale, TargetVisualScale, 1f);
             target.tag = GameConstants.TagTarget;
-            target.AddComponent<BoxCollider2D>().isTrigger = true;
+
+            var targetSr = target.AddComponent<SpriteRenderer>();
+            targetSr.sprite = LoadSpriteFromPng(TargetSpritePath);
+            targetSr.sortingLayerName = "Gameplay";
+
+            // PolygonCollider2D from sprite alpha so the rocket only "hits" where the bomber is
+            // visible. Trigger so OnTriggerEnter2D fires the win flow without bouncing.
+            if (targetSr.sprite != null)
+            {
+                var poly = target.AddComponent<PolygonCollider2D>();
+                poly.isTrigger = true;
+            }
+            else
+            {
+                var box = target.AddComponent<BoxCollider2D>();
+                box.isTrigger = true;
+                Debug.LogError("[SceneSetupTool] target.png failed to load — using box collider fallback.");
+            }
+
+            // Exhaust trail for visual life. Bobbing animation INTENTIONALLY OMITTED — the target
+            // must stay at its randomized position so the analytical trajectory solver hits it.
+            // A bobbing target would shift after RespawnObstacles computes the safe arc, causing
+            // auto-play to miss by the bob amplitude.
+            var targetTrail = target.AddComponent<JetExhaustTrail>();
+            // Distinctive cyan/violet exhaust + much longer trail so the target reads as the "boss"
+            // aircraft (the prize) rather than another protector jet. Force nozzleXFraction=+1
+            // (RIGHT edge = tail) explicitly so any stale scene-serialized value is overwritten.
+            targetTrail.Configure(
+                trailLengthScale: 2.2f,
+                hueShiftDegrees: 0f,
+                coreTint: new Color(0.6f, 0.9f, 1f, 1f),    // pale cyan core
+                flameTint: new Color(0.5f, 0.4f, 1f, 1f),   // violet flame
+                nozzleXFraction: 1f,
+                emissionMultiplier: 1.6f);                  // denser, punchier flame than protector jets
         }
 
         private static void CreateGameplay(GameObject parent)
@@ -88,6 +124,8 @@ namespace RocketLauncher.Editor
         {
             var vehicle = CreateEmpty("LauncherVehicle", parent);
             vehicle.transform.position = new Vector3(VehicleX, VehicleY, 0f);
+            // Tag so Rocket can detect friendly-fire collision and trigger game-over.
+            vehicle.tag = GameConstants.TagLauncherVehicle;
 
             var col = vehicle.AddComponent<BoxCollider2D>();
             col.isTrigger = true;
@@ -148,9 +186,11 @@ namespace RocketLauncher.Editor
         private static void CreateAimArrow(GameObject parent)
         {
             var go = CreateSprite("AimArrow", parent,
-                RocketSpawnWorld, new Vector3(0.15f, 1f, 1f),
+                RocketSpawnWorld, new Vector3(0.06f, 1f, 1f),  // thinner line
                 new Color(1f, 1f, 1f, 0.7f), "Projectile");
-            go.GetComponent<SpriteRenderer>().enabled = false;
+            var sr = go.GetComponent<SpriteRenderer>();
+            sr.enabled = false;
+            sr.sortingOrder = -1;  // behind the rocket sprite (which sits at default order 0)
             go.AddComponent<AimArrow>();
         }
     }

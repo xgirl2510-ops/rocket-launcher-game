@@ -26,3 +26,15 @@ Thumbs.db
 *.aab
 *.unitypackage
 *.app
+
+# Tooling / local-only
+.claude/
+ProjectSettings/McpUnitySettings.json
+ProjectSettings/GvhProjectSettings.xml
+mempalace.yaml
+entities.json
+repomix-output.xml
+Assets/_Recovery/
+Assets/_Recovery.meta
+Assets/Sprites/Generated/*.error.txt
+Assets/Sprites/Generated/*.error.txt.meta

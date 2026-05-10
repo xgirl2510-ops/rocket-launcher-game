@@ -15,6 +15,7 @@ namespace RocketLauncher
         [SerializeField] private Transform _spawnPoint;
         [SerializeField] private CameraController _cameraController;
         [SerializeField] private Transform _targetTransform;
+        [SerializeField] private Transform _launcherVehicleTransform;
         [SerializeField] private ObstacleSpawner _obstacleSpawner;
         [SerializeField] private LaunchController _launchController;
 
@@ -62,10 +63,21 @@ namespace RocketLauncher
             if (_spawnPoint == null) Debug.LogError("[RoundManager] _spawnPoint is null.", this);
 #endif
 
+            // Defensive: ensure Target's SpriteRenderer has a sprite at runtime.
+            // Some scenes have a Target with SpriteRenderer enabled + red color but sprite=null
+            // (broken square asset cache). Without a sprite, Target is invisible despite being active.
+            if (_targetTransform != null)
+            {
+                var sr = _targetTransform.GetComponent<SpriteRenderer>();
+                if (sr != null && sr.sprite == null)
+                    sr.sprite = RuntimeSpriteFactory.GetSolidSprite();
+            }
+
             if (_rocket != null)
             {
                 _rocket.OnRocketLanded += HandleRocketMiss;
                 _rocket.OnTargetHit += HandleTargetHit;
+                _rocket.OnLauncherVehicleHit += HandleLauncherVehicleHit;
             }
 
             if (_cameraController != null)
@@ -105,6 +117,38 @@ namespace RocketLauncher
             RoundManagerHUD.Instance?.UpdateStatsUI(_roundTracker);
         }
 
+        /// <summary>
+        /// Friendly fire — rocket fell on its own launcher vehicle.
+        /// Treat as game-over: explosion already fired by Rocket.HandleLauncherVehicleTrigger
+        /// (via OnImpact event), then we PAUSE physics + particles + audio per-object via
+        /// WorldPauseController so the scene stops cold while UI stays responsive.
+        /// </summary>
+        private void HandleLauncherVehicleHit(Vector2 impactPosition)
+        {
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.StopThrust();
+                AudioManager.Instance.PlayHitTarget(); // reuse — same explosion sfx feels right
+            }
+
+            if (_isAutoPlaying)
+            {
+                // Auto-play demo: just reset like any other shot, no UI, no freeze.
+                StartCoroutine(DelayedAction(_reloadDelay, ReloadAfterAutoPlay));
+                return;
+            }
+
+            _rocket.gameObject.SetActive(false);
+            RoundManagerHUD.Instance?.ShowGameOverUI();
+            RoundManagerHUD.Instance?.UpdateStatsUI(_roundTracker);
+
+            // Delay the freeze so the explosion can fully render and debris rigidbodies
+            // get to apply their impulse for ~0.4s before physics is silenced. Freezing in
+            // the same frame as OnImpact would lock debris in place at spawn position and
+            // make the player see no motion at all.
+            StartCoroutine(DelayedAction(0.4f, WorldPauseController.Freeze));
+        }
+
         /// <summary>Rocket hit ground — count miss (or reset if auto-play demo).</summary>
         private void HandleRocketMiss()
         {
@@ -133,6 +177,11 @@ namespace RocketLauncher
             if (_cameraController != null)
                 _cameraController.ReturnToVehicle();
 
+            // Clear leftover explosion effects from the previous shot — lingering fire/smoke/debris
+            // would otherwise overlap visually with the next shot's impact.
+            RocketDebris.ClearAll();
+            ExplosionEffect.ClearAll();
+
             _rocket.ResetToPosition(_spawnPoint.position);
 
             if (_missCount >= MissesBeforeHints)
@@ -143,12 +192,17 @@ namespace RocketLauncher
 
         private void OnDestroy()
         {
+            // Defensive: if scene tears down while paused, unfreeze so the next session
+            // starts in a clean state (AudioListener.pause persists across scene loads).
+            WorldPauseController.Unfreeze();
+
             StopAllCoroutines();
 
             if (_rocket != null)
             {
                 _rocket.OnRocketLanded -= HandleRocketMiss;
                 _rocket.OnTargetHit -= HandleTargetHit;
+                _rocket.OnLauncherVehicleHit -= HandleLauncherVehicleHit;
             }
 
             if (_cameraController != null)

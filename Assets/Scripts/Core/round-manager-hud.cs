@@ -19,6 +19,7 @@ namespace RocketLauncher
 
         [Header("UI")]
         [SerializeField] private TextMeshProUGUI _winText;
+        [SerializeField] private TextMeshProUGUI _gameOverText;
         [SerializeField] private Button _restartButton;
         [SerializeField] private Button _autoPlayButton;
         [SerializeField] private Button _lookTargetButton;
@@ -43,6 +44,7 @@ namespace RocketLauncher
         private void Start()
         {
             if (_winText != null) _winText.gameObject.SetActive(false);
+            if (_gameOverText != null) _gameOverText.gameObject.SetActive(false);
             if (_restartButton != null)
             {
                 _restartButton.gameObject.SetActive(false);
@@ -77,6 +79,20 @@ namespace RocketLauncher
         public void HideWinUI()
         {
             if (_winText != null) _winText.gameObject.SetActive(false);
+            if (_restartButton != null) _restartButton.gameObject.SetActive(false);
+        }
+
+        /// <summary>Show GAME OVER text (friendly fire) and restart button.</summary>
+        public void ShowGameOverUI()
+        {
+            if (_gameOverText != null) _gameOverText.gameObject.SetActive(true);
+            if (_restartButton != null) _restartButton.gameObject.SetActive(true);
+        }
+
+        /// <summary>Hide GAME OVER text and restart button.</summary>
+        public void HideGameOverUI()
+        {
+            if (_gameOverText != null) _gameOverText.gameObject.SetActive(false);
             if (_restartButton != null) _restartButton.gameObject.SetActive(false);
         }
 

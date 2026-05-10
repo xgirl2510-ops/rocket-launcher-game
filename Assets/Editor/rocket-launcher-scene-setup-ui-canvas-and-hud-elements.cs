@@ -26,6 +26,8 @@ namespace RocketLauncher.Editor
             canvasGO.AddComponent<GraphicRaycaster>();
 
             CreateTMPLabel(canvasGO, "WinText",  "YOU WIN!", 72, "#FFD700", new Vector2(0, 200), new Vector2(700, 130));
+            // Red GAME OVER label for friendly-fire (rocket fell on own launcher).
+            CreateTMPLabel(canvasGO, "GameOverText", "GAME OVER", 72, "#FF3030", new Vector2(0, 200), new Vector2(700, 130));
             CreateRestartButton(canvasGO);
 
             CreateBottomButtons(canvasGO);

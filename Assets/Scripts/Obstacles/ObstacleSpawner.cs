@@ -15,10 +15,26 @@ namespace RocketLauncher
         [SerializeField] private Transform _targetTransform;
 
         [Header("Obstacle Settings")]
-        [SerializeField, Range(3, 15)] private int _obstacleCount = 6;
-        [SerializeField] private float _obstacleMinSize = 0.8f;
-        [SerializeField] private float _obstacleMaxSize = 2.0f;
-        [SerializeField] private Color _obstacleColor = new Color(0.4f, 0.4f, 0.4f, 1f);
+        // Per-round random in [_obstacleCountMin, _obstacleCountMax] for replayability.
+        [SerializeField, Range(3, 15)] private int _obstacleCountMin = 6;
+        [SerializeField, Range(3, 15)] private int _obstacleCountMax = 12;
+        // Uniform jet scale matching launcher truck width (~3.5 world units).
+        // 1791 / 100 PPU = 17.91 unit at scale 1; 3.5 / 17.91 ≈ 0.196.
+        // Min == Max so all jets render identical size (Random.Range collapses to one value).
+        [SerializeField] private float _obstacleMinSize = 0.196f;
+        [SerializeField] private float _obstacleMaxSize = 0.196f;
+        [SerializeField] private Color _obstacleColor = Color.white;
+        // Jet fighter sprite (protector.png) — 880x182 PNG. At scale 0.4 with PPU 100,
+        // world width ≈ 3.5 units which matches the launcher truck's visual width.
+        [SerializeField] private Sprite _obstacleSprite;
+        // Defensive interceptor missile sprite (rk.png) — fired by jets at incoming player rocket.
+        [SerializeField] private Sprite _interceptorSprite;
+        // Aspect-ratio of protector.png (1791/361) so collider matches the visual rectangle.
+        private const float ObstacleSpriteAspect = 1791f / 361f;
+        // World dimensions of the sprite at scale 1 (pixels / PPU = 100). Used for AABB overlap
+        // so we use REAL world units, not aspect ratio. WidthAtScale1 = 17.91, HeightAtScale1 = 3.61.
+        private const float SpriteWidthAtScale1 = 1791f / 100f;
+        private const float SpriteHeightAtScale1 = 361f / 100f;
 
         [Header("Safe Zone")]
         [SerializeField] private float _safeRadius = 1.5f;
@@ -26,15 +42,20 @@ namespace RocketLauncher
 
         [Header("Spawn Area")]
         [SerializeField] private float _spawnPaddingX = 3f;
-        [SerializeField] private float _spawnMinY = -4f;
-        [SerializeField] private float _spawnMaxY = 12f;
+        // Vertical range tuned for jets to cluster around mid-air, not scatter to extremes.
+        [SerializeField] private float _spawnMinY = -3f;
+        [SerializeField] private float _spawnMaxY = 13f;
 
-        private const int MaxSpawnAttemptsMultiplier = 20;
+        // Higher multiplier because corridor radius (10 units = DetectionRange) eats most of the
+        // spawn rectangle — we need lots of attempts to find positions outside the safe corridor.
+        private const int MaxSpawnAttemptsMultiplier = 60;
         private const float VelocityEstimateScale = 1.5f;
         private const float MinVelocitySquared = 100f;
         private const float FallbackAngleDeg = 60f;
         private const float TimeOfFlightScale = 1.2f;
-        private const float OverlapSeparationScale = 1.2f;
+        // Tight packing — 1.05 means jets can sit nearly touching (5% buffer between AABBs).
+        // Visual cluster reads as a "formation" rather than scattered scouts.
+        private const float OverlapSeparationScale = 1.05f;
         private const float MinHorizontalSpeed = 0.1f;
 
         private readonly List<GameObject> _obstacles = new List<GameObject>();
@@ -135,16 +156,20 @@ namespace RocketLauncher
             float maxX = target.x - _spawnPaddingX;
             if (minX >= maxX) return;
 
+            // Roll target count per round so each replay has a slightly different jet count.
+            int targetCount = Random.Range(_obstacleCountMin, _obstacleCountMax + 1);
             int spawned = 0;
-            int maxAttempts = _obstacleCount * MaxSpawnAttemptsMultiplier;
+            int maxAttempts = targetCount * MaxSpawnAttemptsMultiplier;
             int attempts = 0;
 
-            while (spawned < _obstacleCount && attempts < maxAttempts)
+            while (spawned < targetCount && attempts < maxAttempts)
             {
                 attempts++;
                 Vector2 candidate = GenerateRandomPosition(minX, maxX);
-                if (!IsPositionValid(candidate)) continue;
-                CreateObstacle(candidate);
+                // Roll size FIRST so anti-overlap can use the same size we'll spawn with.
+                float candidateScale = Random.Range(_obstacleMinSize, _obstacleMaxSize);
+                if (!IsPositionValid(candidate, candidateScale)) continue;
+                CreateObstacle(candidate, candidateScale);
                 spawned++;
             }
         }
@@ -156,34 +181,73 @@ namespace RocketLauncher
             return new Vector2(x, y);
         }
 
-        private bool IsPositionValid(Vector2 candidate)
+        private bool IsPositionValid(Vector2 candidate, float candidateScale)
         {
             if (IsInSafeZone(candidate)) return false;
+            if (IsTooCloseToTarget(candidate)) return false;
 
-            float minSepSqr = _obstacleMaxSize * OverlapSeparationScale;
-            minSepSqr *= minSepSqr;
+            // AABB overlap check using the jet's true rectangular footprint.
+            // Sprite world-size at scale s = (aspect * s) wide × s tall.
+            // Padding via OverlapSeparationScale keeps a small visible gap between planes.
+            Rect candidateRect = MakeJetRect(candidate, candidateScale, OverlapSeparationScale);
             foreach (var obs in _obstacles)
             {
-                if (((Vector2)obs.transform.position - candidate).sqrMagnitude < minSepSqr)
-                    return false;
+                if (obs == null) continue;
+                float existingScale = obs.transform.localScale.x;
+                Rect existingRect = MakeJetRect(obs.transform.position, existingScale, OverlapSeparationScale);
+                if (candidateRect.Overlaps(existingRect)) return false;
             }
             return true;
         }
 
+        /// <summary>
+        /// True if a jet placed at this candidate position would overlap or sit too close to
+        /// the target aircraft. Buffer = target half-width + jet half-width + 1 unit gap, so
+        /// no jet appears to be "huddled" against the target visually.
+        /// </summary>
+        private bool IsTooCloseToTarget(Vector2 candidate)
+        {
+            if (_targetTransform == null) return false;
+            // Target world half-width ≈ 21.03 * 0.27 / 2 ≈ 2.84.
+            // Jet half-width ≈ 17.91 * obstacleScale / 2 ≈ 1.75.
+            // Buffer = 2.84 + 1.75 + 1.0 (gap) ≈ 5.6.
+            const float minDistanceToTarget = 5.6f;
+            const float minDistSqr = minDistanceToTarget * minDistanceToTarget;
+            return ((Vector2)_targetTransform.position - candidate).sqrMagnitude < minDistSqr;
+        }
+
+        /// <summary>Build the world-space AABB of a jet at given center+scale, padded by separation factor.</summary>
+        private static Rect MakeJetRect(Vector2 center, float scale, float padding)
+        {
+            float w = SpriteWidthAtScale1 * scale * padding;
+            float h = SpriteHeightAtScale1 * scale * padding;
+            return new Rect(center.x - w * 0.5f, center.y - h * 0.5f, w, h);
+        }
+
+        /// <summary>
+        /// A point is "in the safe zone" if a jet placed there would block the safe trajectory.
+        /// Corridor must be ≥ jet half-WIDTH (the longest sprite axis) so a jet centered just
+        /// outside the corridor still cannot extend its silhouette into the trajectory line.
+        /// Auto-play follows this same trajectory exactly, so a clipped jet would intercept it.
+        /// </summary>
         private bool IsInSafeZone(Vector2 point)
         {
             if (_safeTrajectory == null) return false;
 
-            float safeRadiusSqr = _safeRadius * _safeRadius;
+            // Jet world half-width ≈ SpriteWidthAtScale1 * obstacleScale * 0.5 = 17.91 * 0.196 / 2 ≈ 1.75
+            // Add a small buffer (0.5) to account for rocket collider radius and trajectory step error.
+            float maxScale = Mathf.Max(_obstacleMinSize, _obstacleMaxSize);
+            float corridor = SpriteWidthAtScale1 * maxScale * 0.5f + 0.5f;
+            float corridorSqr = corridor * corridor;
             foreach (var tp in _safeTrajectory)
             {
-                if ((point - tp).sqrMagnitude < safeRadiusSqr)
+                if ((point - tp).sqrMagnitude < corridorSqr)
                     return true;
             }
             return false;
         }
 
-        private void CreateObstacle(Vector2 position)
+        private void CreateObstacle(Vector2 position, float size)
         {
             var go = new GameObject("Obstacle");
             go.transform.position = new Vector3(position.x, position.y, 0f);
@@ -191,15 +255,37 @@ namespace RocketLauncher
             // Obstacles use Default layer (0). Physics2D matrix must allow Default↔Rocket (layer 8) collision.
             go.layer = GameConstants.DefaultLayer;
 
-            float size = Random.Range(_obstacleMinSize, _obstacleMaxSize);
+            // Use uniform scale so the jet keeps its real silhouette aspect — non-uniform
+            // scaling would squash/stretch the plane and look fake.
             go.transform.localScale = new Vector3(size, size, 1f);
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = RuntimeSpriteFactory.GetSolidSprite();
+            // Fall back to solid sprite if no jet sprite assigned (defensive — pre-Setup-Scene state)
+            sr.sprite = _obstacleSprite != null ? _obstacleSprite : RuntimeSpriteFactory.GetSolidSprite();
             sr.color = _obstacleColor;
             sr.sortingLayerName = GameConstants.SortingLayerGameplay;
 
-            go.AddComponent<BoxCollider2D>();
+            // PolygonCollider2D auto-builds from the sprite's physics shape (alpha outline) so
+            // the rocket only collides where the jet actually exists — no invisible "wing area"
+            // around an empty rectangle. Falls back to BoxCollider2D for the solid square sprite.
+            if (_obstacleSprite != null)
+            {
+                go.AddComponent<PolygonCollider2D>();
+                // Afterburner exhaust — only meaningful on the jet sprite, not the fallback square.
+                go.AddComponent<JetExhaustTrail>();
+                // Gentle vertical bobbing so the jet reads as actively flying, not frozen.
+                go.AddComponent<JetHoverAnimation>();
+                // Defensive interceptor — fires rk.png missile when player rocket is incoming.
+                if (_interceptorSprite != null)
+                {
+                    JetInterceptorLauncher.SetInterceptorSprite(_interceptorSprite);
+                    go.AddComponent<JetInterceptorLauncher>();
+                }
+            }
+            else
+            {
+                go.AddComponent<BoxCollider2D>();
+            }
 
             _obstacles.Add(go);
         }

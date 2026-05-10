@@ -9,6 +9,8 @@ namespace RocketLauncher
         public const string TagGround = "Ground";
         /// <summary>Tag applied to the target GameObject.</summary>
         public const string TagTarget = "Target";
+        /// <summary>Tag applied to the launcher vehicle (the player's own truck — friendly fire = game over).</summary>
+        public const string TagLauncherVehicle = "LauncherVehicle";
 
         /// <summary>Minimum launch force (slingshot fully relaxed).</summary>
         public const float MinLaunchForce = 5f;
@@ -29,5 +31,12 @@ namespace RocketLauncher
 
         /// <summary>Angle offset to align sprites (which point UP) to velocity direction.</summary>
         public const float SpriteAngleOffset = -90f;
+
+        /// <summary>Min allowed launch angle in degrees (0 = straight right). Below this, launch direction is clamped.</summary>
+        public const float MinLaunchAngleDeg = 0f;
+        /// <summary>Max allowed launch angle in degrees (90 = straight up). Above this, launch direction is clamped to 90.</summary>
+        public const float MaxLaunchAngleDeg = 90f;
+        /// <summary>Soft-warn margin: when launch angle is within this many degrees of the limit, arrow shows warning color.</summary>
+        public const float LaunchAngleWarnMarginDeg = 10f;
     }
 }
