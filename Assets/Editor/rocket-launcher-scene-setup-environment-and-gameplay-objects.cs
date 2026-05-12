@@ -40,7 +40,7 @@ namespace RocketLauncher.Editor
         private const string RocketSpritePath = "Assets/Sprites/Generated/rocket2.png";
         private const string LauncherSpritePath = "Assets/Sprites/Generated/car2.png";
         private const string GroundSpritePath = "Assets/Sprites/Generated/ground.png";
-        private const string BackgroundSpritePath = "Assets/Sprites/Generated/bg.jpg";
+        private const string BackgroundSpritePath = "Assets/Sprites/Generated/bg.png";
         // target.png 2103×479 @ PPU 100 → world width 21.03; scale 0.27 → 5.68 unit (~60% larger than jets).
         private const string TargetSpritePath = "Assets/Sprites/Generated/target.png";
         private const float TargetVisualScale = 0.27f;
@@ -65,15 +65,15 @@ namespace RocketLauncher.Editor
         private static void CreateEnvironment(GameObject parent)
         {
             // Static world-space background at NATIVE sprite size (no scaling, no warping).
-            // bg.jpg is 4096×1936 @ PPU 100 → world size 40.96 × 19.36.
-            //   bgCentreY = bgBottomY + bgHeight/2 = -5.74 + 9.68 = 3.94
-            //   bgLeftX = carLeftX - 2 × carWidth = (-7 - 1.755) - 2×3.51 = -15.775
-            //   bgCentreX = bgLeftX + bgWidth/2 = -15.775 + 20.48 = 4.71
+            // bg.png is 8000×5000 @ PPU 100 → world size 80 × 50.
+            //   bgCentreY = bgBottomY + bgHeight/2 = -5.74 + 25 = 19.26
+            //   bgLeftX = carLeftX - 2 × carWidth = -8.755 - 7.02 = -15.775
+            //   bgCentreX = bgLeftX + bgWidth/2 = -15.775 + 40 = 24.225
             // Component-side scaling is disabled (_targetWorldHeight = 0).
             var bg = CreateEmpty("Background", parent);
-            bg.transform.position = new Vector3(4.71f, 3.94f, 50f);
+            bg.transform.position = new Vector3(24.225f, 19.26f, 50f);
             var bgSr = bg.AddComponent<SpriteRenderer>();
-            bgSr.sprite = LoadSpriteFromPng(BackgroundSpritePath, 4096);
+            bgSr.sprite = LoadSpriteFromPng(BackgroundSpritePath, 8192);
             if (bgSr.sprite != null)
             {
                 bg.AddComponent<CameraFitHeightBackground>();
