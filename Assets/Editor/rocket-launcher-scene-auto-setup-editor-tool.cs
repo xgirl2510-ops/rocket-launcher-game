@@ -160,6 +160,11 @@ namespace RocketLauncher.Editor
                 so.FindProperty("_launcherVehicleTransform").objectReferenceValue = vehicle.transform;
 
             so.FindProperty("_obstacleSpawner").objectReferenceValue = os;
+            // Goal random X range — sits 25-47u ahead of launcher (car X ≈ -1.65 → world X 23-45).
+            // Verified by physics sim: worst-case rocket reach is ~48.9u at goal Y=10 (highest altitude),
+            // so 45 leaves ~4u buffer to guarantee every roll is reachable with the right angle + full power.
+            so.FindProperty("_targetMinX").floatValue = 23f;
+            so.FindProperty("_targetMaxX").floatValue = 45f;
             // LaunchController wired after it's created
             so.ApplyModifiedProperties();
 
@@ -185,12 +190,22 @@ namespace RocketLauncher.Editor
             // edits stick because this only runs when the user explicitly invokes the setup tool.
             osSo.FindProperty("_obstacleMinSize").floatValue = 0.196f;
             osSo.FindProperty("_obstacleMaxSize").floatValue = 0.196f;
-            // Per-round random count 6..12 for varied difficulty.
-            osSo.FindProperty("_obstacleCountMin").intValue = 6;
-            osSo.FindProperty("_obstacleCountMax").intValue = 12;
+            // Per-round random count 10..15 — denser walls so the gap is the only viable shot.
+            osSo.FindProperty("_obstacleCountMin").intValue = 10;
+            osSo.FindProperty("_obstacleCountMax").intValue = 15;
+            // Wall-slice tuning — 4 vertical columns with a 1.6u gap forces the player to thread
+            // the analytic arc instead of finding alternate trajectories.
+            osSo.FindProperty("_wallSliceCount").intValue = 4;
+            osSo.FindProperty("_wallGapHalfHeight").floatValue = 1.6f;
+            // Mandatory goal shield + cap — kills flat shots and forces a vertical gate descent.
+            osSo.FindProperty("_shieldDistanceAhead").floatValue = 6f;
+            osSo.FindProperty("_capHeightAboveGoal").floatValue = 3f;
+            osSo.FindProperty("_capHalfGapWidth").floatValue = 1.4f;
             // Tighter Y range so jets cluster as a formation rather than scattering.
             osSo.FindProperty("_spawnMinY").floatValue = -3f;
             osSo.FindProperty("_spawnMaxY").floatValue = 13f;
+            // Min horizontal gap from launcher AND target (8u keeps the car visually clear of jets).
+            osSo.FindProperty("_spawnPaddingX").floatValue = 8f;
             osSo.ApplyModifiedProperties();
 
             Debug.Log("[SceneSetupTool] RoundManager + ObstacleSpawner wired.");
@@ -321,6 +336,18 @@ namespace RocketLauncher.Editor
                 so.FindProperty("_vehicleTransform").objectReferenceValue = vehicle.transform;
             if (target != null)
                 so.FindProperty("_targetTransform").objectReferenceValue = target.transform;
+
+            // Force zoom-out range so apex (~55u) and max range (~105u) leave ~10u padding from edges.
+            // Aspect 9/19.5 → halfWidth = ortho * 0.46 → ortho 22 gives ~10u right-padding at max range.
+            so.FindProperty("_maxOrthoSize").floatValue = 22f;
+            so.FindProperty("_zoomMaxDistance").floatValue = 50f;
+            // Y-axis lag-follow tuning — rocket drifts toward top edge as it climbs.
+            so.FindProperty("_apexTopPadding").floatValue = 4f;
+            so.FindProperty("_expectedApexHeight").floatValue = 40f;
+            // X-axis lag-follow tuning — rocket drifts toward right edge as it flies forward.
+            so.FindProperty("_rangeRightPadding").floatValue = 4f;
+            so.FindProperty("_expectedRangeDistance").floatValue = 80f;
+
             so.ApplyModifiedProperties();
 
             Debug.Log("[SceneSetupTool] CameraController wired.");
@@ -431,7 +458,10 @@ namespace RocketLauncher.Editor
         {
             var go = new GameObject("Main Camera");
             go.tag = "MainCamera";
-            go.transform.position = new Vector3(0f, CamY, -10f);
+            // Camera X biased left so the launcher (car at world X = -7) sits inside the
+            // viewport at start. At ortho 9 with aspect 9/19.5, halfWidth ≈ 4.15 — so
+            // camera X = -4.5 means visible range = -8.65..-0.35, car comfortably in frame.
+            go.transform.position = new Vector3(-4.5f, CamY, -10f);
             var cam = go.AddComponent<Camera>();
             cam.orthographic     = true;
             cam.orthographicSize = CamOrthoSize;

@@ -3,34 +3,25 @@ using UnityEngine;
 namespace RocketLauncher
 {
     /// <summary>
-    /// Defensive launcher attached to each jet obstacle. Fires interceptor missile rk.png
-    /// ONLY if THIS jet is the predicted first-hit victim of the player rocket AND the
-    /// rocket is within DetectionRange. Other jets do nothing — the centralized
-    /// RocketTrajectoryPredictor singleton ensures only one jet (the victim) acts.
+    /// Defensive launcher attached to each jet obstacle. Stays passive until the centralized
+    /// RocketTrajectoryPredictor flags THIS jet as the predicted first-hit victim — at which
+    /// point it fires a homing interceptor missile.
     ///
-    /// Trigger criteria (must satisfy all):
-    ///   1. Player rocket flying
-    ///   2. RocketTrajectoryPredictor flagged THIS jet as the first-hit victim
-    ///   3. Distance jet→rocket ≤ DetectionRange
-    ///   4. Cooldown elapsed since last fire
+    /// Trigger is event-driven (not polled): predictor calls OnFlaggedAsVictim(rendezvous, time)
+    /// once per rocket launch, on exactly one jet (or none if the arc misses every jet).
     /// </summary>
     public class JetInterceptorLauncher : MonoBehaviour
     {
         /// <summary>
-        /// Range in world units within which the victim jet fires its interceptor at
-        /// the incoming rocket. Public so external systems can read this geometry.
+        /// Range in world units within which the interceptor must rendezvous with the rocket.
+        /// Public so the predictor and missile can read this geometry.
         /// </summary>
         public const float DetectionRange = 5f;
-
-        // Cooldown so a victim jet doesn't spam interceptors during a single approach.
-        private const float CooldownSeconds = 0.6f;
 
         // Sprite reference for interceptor — assigned by ObstacleSpawner from rk.png.
         private static Sprite _cachedInterceptorSprite;
 
         private Rocket _playerRocket;
-        private float _nextFireTime;
-        private bool _wasFlying;
 
         public static void SetInterceptorSprite(Sprite sprite) => _cachedInterceptorSprite = sprite;
 
@@ -50,30 +41,25 @@ namespace RocketLauncher
             _playerRocket = Object.FindFirstObjectByType<Rocket>();
         }
 
-        private void Update()
+        /// <summary>
+        /// Called by RocketTrajectoryPredictor immediately after the rocket is launched, on
+        /// the single jet whose DetectionRange the predicted arc enters first. Spawns one
+        /// homing interceptor with the rendezvous point — the missile uses real-time pursuit
+        /// of the rocket, not a baked path, so it tracks even if the rocket veers from prediction.
+        /// </summary>
+        public void OnFlaggedAsVictim(Vector2 rendezvous, float timeToRendezvous, bool rocketAscending)
         {
+            if (_playerRocket == null) _playerRocket = Object.FindFirstObjectByType<Rocket>();
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.Log($"[Interceptor] Victim launcher at {transform.position} received OnFlaggedAsVictim. " +
+                      $"playerRocket={(_playerRocket != null ? "OK" : "NULL")}, sprite={(_cachedInterceptorSprite != null ? "OK" : "NULL")}, ascending={rocketAscending}");
+#endif
             if (_playerRocket == null || _cachedInterceptorSprite == null) return;
 
-            // Reset cooldown on rocket relaunch so the victim jet can intercept the new shot.
-            bool flyingNow = _playerRocket.IsFlying;
-            if (flyingNow && !_wasFlying) _nextFireTime = 0f;
-            _wasFlying = flyingNow;
-
-            if (!flyingNow) return;
-            if (Time.time < _nextFireTime) return;
-
-            // Centralized predictor decides which single jet is the victim. If we're not
-            // the victim, do nothing — even if the rocket is in our DetectionRange.
-            if (!RocketTrajectoryPredictor.Instance.IsVictim(this)) return;
-
-            float dist = Vector2.Distance(_playerRocket.transform.position, transform.position);
-            if (dist > DetectionRange) return;
-
-            FireInterceptor();
-            _nextFireTime = Time.time + CooldownSeconds;
+            FireInterceptor(rendezvous, timeToRendezvous, rocketAscending);
         }
 
-        private void FireInterceptor()
+        private void FireInterceptor(Vector2 rendezvous, float timeToRendezvous, bool rocketAscending)
         {
             var go = new GameObject("Interceptor");
             go.transform.position = transform.position;
@@ -95,7 +81,10 @@ namespace RocketLauncher
             var trail = go.AddComponent<RocketTrail>();
 
             var missile = go.AddComponent<InterceptorMissile>();
-            missile.Initialize(_playerRocket.transform);
+            // Jet sprite (protector.png) has its nose pointing LEFT in the raw PNG, and the jet
+            // GameObject has no flip applied — so the jet's "forward" in world space = -transform.right.
+            Vector2 jetForward = -(Vector2)transform.right;
+            missile.Initialize(_playerRocket.transform, rendezvous, timeToRendezvous, transform.position, DetectionRange, rocketAscending, jetForward);
 
             trail.StartTrail();
 
@@ -103,7 +92,7 @@ namespace RocketLauncher
                 AudioManager.Instance.PlayInterceptorLaunch();
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            Debug.Log($"[Interceptor] Victim jet at {transform.position} fires at rocket {_playerRocket.transform.position}");
+            Debug.Log($"[Interceptor] Jet at {transform.position} fires homing missile — rendezvous {rendezvous} in {timeToRendezvous:F2}s");
 #endif
         }
     }

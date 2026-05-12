@@ -41,17 +41,17 @@ TagManager:
   - 
   - 
   m_SortingLayers:
-  - name: Default
-    uniqueID: 0
-    locked: 0
   - name: Background
     uniqueID: 332801758
+    locked: 0
+  - name: Default
+    uniqueID: 0
     locked: 0
   - name: Environment
     uniqueID: 270112577
     locked: 0
   - name: Gameplay
-    uniqueID: 0
+    uniqueID: 156329841
     locked: 0
   - name: Projectile
     uniqueID: 469617985

@@ -29,11 +29,23 @@ namespace RocketLauncher
         [Header("Follow")]
         [SerializeField] private float _followSmoothTime = 0.12f;
         [SerializeField] private float _followOffsetY = 2f;
+        [Tooltip("Top padding (world units) between rocket and screen top when rocket reaches expected apex. Smaller = rocket sits closer to top edge at apex.")]
+        [SerializeField] private float _apexTopPadding = 4f;
+        [Tooltip("Height (world units) at which the camera reaches full apex-lag. Smaller = rocket pushes to top edge sooner.")]
+        [SerializeField] private float _expectedApexHeight = 40f;
+        [Tooltip("Right padding (world units) between rocket and screen right edge at expected max range.")]
+        [SerializeField] private float _rangeRightPadding = 4f;
+        [Tooltip("Horizontal distance (from launcher) at which the camera reaches full range-lag. Smaller = rocket pushes to right edge sooner.")]
+        [SerializeField] private float _expectedRangeDistance = 80f;
 
         [Header("Dynamic Zoom")]
-        [SerializeField] private float _maxOrthoSize = 15f;
+        // Sized so apex (~55u up) and max range (~105u right) both leave ~10u padding from screen edges.
+        // X is the binding constraint: aspect 9/19.5 means halfWidth = ortho * 0.46 → ortho ≥ ~22 to give 10u right-padding.
+        // Y at this size shows top-edge ~22u above rocket, which is comfortably above the 10u request.
+        [SerializeField] private float _maxOrthoSize = 22f;
         [SerializeField] private float _zoomOutSpeed = 5f;
-        [SerializeField] private float _zoomMaxDistance = 40f;
+        // Reach max zoom by the time rocket is roughly mid-trajectory so framing is wide BEFORE apex.
+        [SerializeField] private float _zoomMaxDistance = 50f;
 
         [Header("Follow Bounds")]
         [Tooltip("If true, camera X never goes left of vehicle X — keeps view focused on the playfield.")]
@@ -133,13 +145,46 @@ namespace RocketLauncher
         {
             if (_rocket == null) return;
 
-            float targetX = _rocket.transform.position.x;
+            float orthoNow = _camera.orthographicSize;
+            float halfWidth = orthoNow * _camera.aspect;
+
+            // ----- X-axis lag follow: rocket drifts toward right edge as it flies forward -----
+            // At launcher (rangeT = 0): camera locked on rocket.X (rocket centered horizontally).
+            // At expected range (rangeT = 1): camera at rocket.X - (halfWidth - _rangeRightPadding)
+            //                                  so right-edge sits exactly _rangeRightPadding ahead of rocket.
+            float rocketX = _rocket.transform.position.x;
+            float baseX = _vehicleTransform != null ? _vehicleTransform.position.x : 0f;
+            float distAhead = Mathf.Max(0f, rocketX - baseX);
+            float rangeT = Mathf.Clamp01(distAhead / Mathf.Max(_expectedRangeDistance, 0.01f));
+
+            float lockedOffsetX = 0f;                                   // rocket centered horizontally
+            float rangeOffsetX = -(halfWidth - _rangeRightPadding);     // rocket drifted toward right edge
+            float dynamicOffsetX = Mathf.Lerp(lockedOffsetX, rangeOffsetX, rangeT);
+            float targetX = rocketX + dynamicOffsetX;
+
             // Asymmetric follow: rocket should never push the camera left of the vehicle —
             // forward-only gameplay means there's nothing of interest behind the launcher.
             if (_clampLeftToVehicle && _vehicleTransform != null)
                 targetX = Mathf.Max(targetX, _vehicleTransform.position.x);
 
-            Vector2 target = new Vector2(targetX, _rocket.transform.position.y + _followOffsetY);
+            // ----- Y-axis lag follow with dead-zone -----
+            // Camera HOLDS at _homeY while the rocket is still below it — that's the "intro pan
+            // settled" position. Only once the rocket climbs ABOVE the camera centre does the
+            // Y-follow engage. Without this, launching from a low vehicle yanks the camera DOWN
+            // to centre the rocket, making the vehicle appear to leap upward on every shot.
+            float rocketY = _rocket.transform.position.y;
+            float baseY = _vehicleTransform != null ? _vehicleTransform.position.y : _homeY;
+            float heightAboveBase = Mathf.Max(0f, rocketY - baseY);
+            float heightT = Mathf.Clamp01(heightAboveBase / Mathf.Max(_expectedApexHeight, 0.01f));
+
+            float lockedOffsetY = _followOffsetY;
+            float apexOffsetY = -(orthoNow - _apexTopPadding);
+            float dynamicOffsetY = Mathf.Lerp(lockedOffsetY, apexOffsetY, heightT);
+            float wantTargetY = rocketY + dynamicOffsetY;
+            // Dead-zone: never pull the camera BELOW its home Y just because rocket is low.
+            float targetY = Mathf.Max(wantTargetY, _homeY);
+
+            Vector2 target = new Vector2(targetX, targetY);
 
             Vector2 current = new Vector2(transform.position.x, transform.position.y);
             Vector2 smoothed = Vector2.SmoothDamp(current, target, ref _smoothVelocity, _followSmoothTime);

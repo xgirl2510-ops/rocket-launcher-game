@@ -154,6 +154,35 @@ namespace RocketLauncher
         private void OnCollisionEnter2D(Collision2D collision)
         {
             if (!_isFlying) return;
+
+            // Jet hit: rocket physically rams a defender jet BEFORE the interceptor reached it.
+            // Both rocket and jet are destroyed mid-air. Counts as a miss so the round restarts.
+            var hitJet = collision.gameObject.GetComponent<JetInterceptorLauncher>();
+            if (hitJet != null)
+            {
+                Vector2 jetImpactVelocity = _rb.linearVelocity;
+                Vector2 jetImpactPos = collision.GetContact(0).point;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                Debug.Log($"[Rocket] ACTUAL JET COLLISION at jet {hitJet.transform.position}, impact point {jetImpactPos}, rocket pos {transform.position}, velocity {jetImpactVelocity}");
+#endif
+
+                _isFlying = false;
+                _rb.linearVelocity = Vector2.zero;
+                _rb.angularVelocity = 0f;
+                if (_trail != null) _trail.StopTrail();
+
+                // Mid-air explosion at the contact point (vibrant burst, no mushroom stem since
+                // it's not a vertical ground impact).
+                ExplosionEffect.Spawn(jetImpactPos, isHit: true, isVerticalImpact: false);
+
+                Destroy(hitJet.gameObject);
+                SetSpritesVisible(false);
+
+                OnImpact?.Invoke(transform.position, false, _maxHeight, jetImpactVelocity);
+                OnRocketLanded?.Invoke();
+                return;
+            }
+
             if (!collision.gameObject.CompareTag(GroundTag)) return;
 
             // Capture velocity BEFORE zeroing — debris/explosion need impact momentum

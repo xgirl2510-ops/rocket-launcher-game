@@ -40,15 +40,18 @@ namespace RocketLauncher.Editor
         private const string RocketSpritePath = "Assets/Sprites/Generated/rocket2.png";
         private const string LauncherSpritePath = "Assets/Sprites/Generated/car2.png";
         private const string GroundSpritePath = "Assets/Sprites/Generated/ground.png";
+        private const string BackgroundSpritePath = "Assets/Sprites/Generated/bg.jpg";
         // target.png 2103×479 @ PPU 100 → world width 21.03; scale 0.27 → 5.68 unit (~60% larger than jets).
         private const string TargetSpritePath = "Assets/Sprites/Generated/target.png";
         private const float TargetVisualScale = 0.27f;
 
         // Step 3: Vehicle sits ON ground — car2.png (1462x780 @ PPU 100)
         private const float VehicleVisualScale = 0.24f;
-        private static readonly float VehicleY = GroundTop + 780f / 100f * VehicleVisualScale / 2f;
-        private const float VehicleOffsetFromLeft = 2.5f;
-        private static readonly float VehicleX   = CamLeft + VehicleOffsetFromLeft;
+        // Vehicle is fixed at a specific world position that visually aligns with the desert
+        // strip drawn into bg.jpg (since the background is now a static world sprite).
+        // Y just above GroundTop so the car sits on terrain rather than floating in the sky.
+        private const float VehicleY = -4.8f;
+        private const float VehicleX = -7f;
 
         // Step 4: Rocket spawn = original Y position preserved
         private const float RocketVisualScale = 0.24f;
@@ -61,17 +64,50 @@ namespace RocketLauncher.Editor
 
         private static void CreateEnvironment(GameObject parent)
         {
-            // ground.png 25000x2048 @ PPU100 = 250 x 20.48 world units at scale 1
-            var ground = CreateEmpty("Ground", parent);
-            float groundNaturalH = 2048f / 100f; // 20.48
-            ground.transform.position = new Vector3(GroundCenterX, GroundTop - groundNaturalH / 2f, 0f);
-            ground.transform.localScale = Vector3.one;
-            ground.tag = GameConstants.TagGround;
-            var groundCol = ground.AddComponent<BoxCollider2D>();
-            groundCol.size = new Vector2(GroundWidth, groundNaturalH); // 500 wide collider
-            var groundSr = ground.AddComponent<SpriteRenderer>();
-            groundSr.sprite = LoadSpriteFromPng(GroundSpritePath, 16384);
-            groundSr.sortingLayerName = "Environment";
+            // Static world-space background at NATIVE sprite size (no scaling, no warping).
+            // bg.jpg is 4096×1936 @ PPU 100 → world size 40.96 × 19.36.
+            //   bgCentreY = bgBottomY + bgHeight/2 = -5.74 + 9.68 = 3.94
+            //   bgLeftX = carLeftX - 2 × carWidth = (-7 - 1.755) - 2×3.51 = -15.775
+            //   bgCentreX = bgLeftX + bgWidth/2 = -15.775 + 20.48 = 4.71
+            // Component-side scaling is disabled (_targetWorldHeight = 0).
+            var bg = CreateEmpty("Background", parent);
+            bg.transform.position = new Vector3(4.71f, 3.94f, 50f);
+            var bgSr = bg.AddComponent<SpriteRenderer>();
+            bgSr.sprite = LoadSpriteFromPng(BackgroundSpritePath, 4096);
+            if (bgSr.sprite != null)
+            {
+                bg.AddComponent<CameraFitHeightBackground>();
+            }
+            else
+            {
+                Debug.LogWarning("[SceneSetupTool] bg.jpg not loaded — Background object created but empty.");
+            }
+
+            // Ground = INVISIBLE physics collider only. No sprite renderer here — the visible
+            // dirt area below the painted BG is rendered by a separate GroundVisual object.
+            // Collider anchored at GroundTop so rocket OnCollisionEnter2D ground check fires
+            // when the rocket lands.
+            var groundPhysics = CreateEmpty("Ground", parent);
+            const float groundColliderHeight = 20f;
+            groundPhysics.transform.position = new Vector3(GroundCenterX, GroundTop - groundColliderHeight / 2f, 0f);
+            groundPhysics.transform.localScale = Vector3.one;
+            groundPhysics.tag = GameConstants.TagGround;
+            var groundCol = groundPhysics.AddComponent<BoxCollider2D>();
+            groundCol.size = new Vector2(GroundWidth, groundColliderHeight);
+
+            // GroundVisual: static world-space dirt sprite. Top edge sits at the car's bottom
+            // edge (VehicleY - half car sprite height = -4.8 - 0.94 = -5.74), so the car sits
+            // ON top of the dirt strip. BG's bottom edge sits flush with this.
+            // Sprite is 25000×2048 px @ PPU 100 = 250×20.48 world units.
+            const float groundTopY = -5.74f;
+            const float groundNaturalH = 2048f / 100f;
+            var groundVisual = CreateEmpty("GroundVisual", parent);
+            groundVisual.transform.position = new Vector3(GroundCenterX, groundTopY - groundNaturalH / 2f, 0f);
+            groundVisual.transform.localScale = Vector3.one;
+            var groundVisualSr = groundVisual.AddComponent<SpriteRenderer>();
+            groundVisualSr.sprite = LoadSpriteFromPng(GroundSpritePath, 16384);
+            groundVisualSr.sortingLayerName = "Environment";
+            groundVisualSr.sortingOrder = 0;
 
             var target = CreateEmpty("Target", parent);
             target.transform.position = new Vector3(TargetX, TargetY, 0f);

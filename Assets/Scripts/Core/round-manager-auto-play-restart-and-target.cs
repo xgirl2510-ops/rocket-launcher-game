@@ -117,6 +117,7 @@ namespace RocketLauncher
             // Auto-play uses pure ballistic flight (no drag, no thrust) so the trajectory
             // matches the analytical solver's high-arc solution and reliably hits the target.
             _rocket.LaunchBallistic(dir, force);
+            RocketTrajectoryPredictor.Instance.OnRocketLaunched(_spawnPoint.position, dir, force);
             if (AudioManager.Instance != null)
             {
                 AudioManager.Instance.PlayLaunch();

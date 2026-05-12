@@ -16,8 +16,26 @@ namespace RocketLauncher
 
         [Header("Obstacle Settings")]
         // Per-round random in [_obstacleCountMin, _obstacleCountMax] for replayability.
-        [SerializeField, Range(3, 15)] private int _obstacleCountMin = 6;
-        [SerializeField, Range(3, 15)] private int _obstacleCountMax = 12;
+        [SerializeField, Range(3, 20)] private int _obstacleCountMin = 10;
+        [SerializeField, Range(3, 20)] private int _obstacleCountMax = 15;
+        // Number of vertical "wall" slices placed across the corridor. Each slice has a jet
+        // above AND below the safe trajectory so the player's only viable path is the gap
+        // matching the analytic arc.
+        [SerializeField, Range(2, 8)] private int _wallSliceCount = 4;
+        // Vertical gap between the safe-trajectory point and each wall jet (centre-to-centre).
+        // Smaller = tighter squeeze. Jet half-height ≈ 0.35u + rocket clearance ~0.6u → 1.6u feels tight.
+        [SerializeField, Range(1f, 4f)] private float _wallGapHalfHeight = 1.6f;
+
+        [Header("Goal Shield (mandatory blockers)")]
+        // A jet planted in front of the goal, on the goal's altitude, to kill flat horizontal shots.
+        // The launcher must arc OVER this jet to land on the goal.
+        [SerializeField, Range(2f, 12f)] private float _shieldDistanceAhead = 6f;
+        // Two jets placed directly ABOVE the goal forming a narrow gate. The rocket can only
+        // descend onto the goal by threading the gap between them.
+        // Vertical offset of the gate above goal.Y.
+        [SerializeField, Range(2f, 8f)] private float _capHeightAboveGoal = 3f;
+        // Horizontal half-gap between the two cap jets (centre-of-gap to centre-of-jet edge).
+        [SerializeField, Range(1f, 4f)] private float _capHalfGapWidth = 1.4f;
         // Uniform jet scale matching launcher truck width (~3.5 world units).
         // 1791 / 100 PPU = 17.91 unit at scale 1; 3.5 / 17.91 ≈ 0.196.
         // Min == Max so all jets render identical size (Random.Range collapses to one value).
@@ -41,7 +59,9 @@ namespace RocketLauncher
         [SerializeField] private int _trajectorySteps = 30;
 
         [Header("Spawn Area")]
-        [SerializeField] private float _spawnPaddingX = 3f;
+        // Min horizontal gap between launcher / target and any obstacle. 8u keeps the car
+        // visually clear of jets and gives the rocket room to accelerate before hitting traffic.
+        [SerializeField] private float _spawnPaddingX = 8f;
         // Vertical range tuned for jets to cluster around mid-air, not scatter to extremes.
         [SerializeField] private float _spawnMinY = -3f;
         [SerializeField] private float _spawnMaxY = 13f;
@@ -156,22 +176,122 @@ namespace RocketLauncher
             float maxX = target.x - _spawnPaddingX;
             if (minX >= maxX) return;
 
-            // Roll target count per round so each replay has a slightly different jet count.
-            int targetCount = Random.Range(_obstacleCountMin, _obstacleCountMax + 1);
-            int spawned = 0;
-            int maxAttempts = targetCount * MaxSpawnAttemptsMultiplier;
-            int attempts = 0;
+            float scale = Random.Range(_obstacleMinSize, _obstacleMaxSize);
+            int mandatorySpawned = SpawnGoalShieldAndCap(start, target, scale);
 
-            while (spawned < targetCount && attempts < maxAttempts)
+            // PHASE 1 — Wall slices: place jets above AND below the analytic arc at evenly-spaced
+            // X columns, leaving a vertical gap that matches the safe trajectory. This forces the
+            // player to thread the needle along the same arc the analytic solver uses.
+            int sliceCount = Mathf.Max(2, _wallSliceCount);
+            int wallSpawned = 0;
+            for (int i = 0; i < sliceCount; i++)
+            {
+                // Spread columns from minX to maxX with a small inset so the first/last slice don't
+                // hug the launcher / goal exactly.
+                float t = (i + 0.5f) / sliceCount;
+                float colX = Mathf.Lerp(minX, maxX, t);
+                float arcY = SampleTrajectoryY(colX);
+                if (float.IsNaN(arcY)) continue;
+
+                Vector2 above = new Vector2(colX, arcY + _wallGapHalfHeight + SpriteHeightAtScale1 * scale * 0.5f);
+                Vector2 below = new Vector2(colX, arcY - _wallGapHalfHeight - SpriteHeightAtScale1 * scale * 0.5f);
+                if (TrySpawnAt(above, scale)) wallSpawned++;
+                if (TrySpawnAt(below, scale)) wallSpawned++;
+            }
+            wallSpawned += mandatorySpawned;
+
+            // PHASE 2 — Random fillers above and below the wall to bring the count up to the
+            // rolled target without ever blocking the safe corridor (IsInSafeZone enforces that).
+            int targetCount = Random.Range(_obstacleCountMin, _obstacleCountMax + 1);
+            int remaining = Mathf.Max(0, targetCount - wallSpawned);
+            int maxAttempts = remaining * MaxSpawnAttemptsMultiplier;
+            int attempts = 0;
+            int filled = 0;
+            while (filled < remaining && attempts < maxAttempts)
             {
                 attempts++;
                 Vector2 candidate = GenerateRandomPosition(minX, maxX);
-                // Roll size FIRST so anti-overlap can use the same size we'll spawn with.
-                float candidateScale = Random.Range(_obstacleMinSize, _obstacleMaxSize);
-                if (!IsPositionValid(candidate, candidateScale)) continue;
-                CreateObstacle(candidate, candidateScale);
-                spawned++;
+                if (!IsPositionValid(candidate, scale)) continue;
+                CreateObstacle(candidate, scale);
+                filled++;
             }
+        }
+
+        /// <summary>
+        /// PHASE 0 — mandatory blockers around the goal:
+        ///   • One "shield" jet placed at goal altitude, _shieldDistanceAhead world units in front
+        ///     of the goal. Kills any flat horizontal shot — the rocket must arc over it.
+        ///   • Two "cap" jets directly above the goal forming a narrow vertical gate. The rocket
+        ///     can only descend onto the goal by threading the centre gap between them.
+        ///
+        /// All three jets are placed BEFORE the wall slices so subsequent phases can detect them
+        /// via the standard overlap check and avoid double-occupying the same square.
+        /// </summary>
+        private int SpawnGoalShieldAndCap(Vector2 start, Vector2 target, float scale)
+        {
+            int placed = 0;
+
+            // Shield: between launcher and goal, on goal's horizontal line.
+            // Direction launcher -> goal projected onto X (the playfield is left-to-right).
+            float shieldDir = Mathf.Sign(target.x - start.x);
+            if (Mathf.Approximately(shieldDir, 0f)) shieldDir = 1f;
+            Vector2 shieldPos = new Vector2(target.x - shieldDir * _shieldDistanceAhead, target.y);
+            if (TrySpawnAt(shieldPos, scale)) placed++;
+
+            // Cap: two jets above the goal, separated by a narrow gap centred on goal.X.
+            // Each jet's centre sits at goal.X ± (capHalfGap + jetHalfWidth) so the visible
+            // window between their inner edges = 2 * capHalfGap.
+            float jetHalfWidth = SpriteWidthAtScale1 * scale * 0.5f;
+            float capY = target.y + _capHeightAboveGoal;
+            Vector2 capLeft = new Vector2(target.x - _capHalfGapWidth - jetHalfWidth, capY);
+            Vector2 capRight = new Vector2(target.x + _capHalfGapWidth + jetHalfWidth, capY);
+            if (TrySpawnAt(capLeft, scale)) placed++;
+            if (TrySpawnAt(capRight, scale)) placed++;
+
+            return placed;
+        }
+
+        /// <summary>
+        /// Try to spawn at a wall-slice position. Skips if outside the spawn Y bounds or if it
+        /// would overlap an already-placed jet — prevents zero-gap walls when the arc grazes
+        /// the spawn-area top/bottom edges.
+        /// </summary>
+        private bool TrySpawnAt(Vector2 pos, float scale)
+        {
+            if (pos.y < _spawnMinY || pos.y > _spawnMaxY) return false;
+            // Wall slices are ALLOWED to "intrude" closer to the corridor than IsInSafeZone permits
+            // (that's the whole point — they DEFINE the corridor edge), so we only check overlap
+            // with other already-placed jets, not the safe-zone trajectory.
+            Rect candidateRect = MakeJetRect(pos, scale, OverlapSeparationScale);
+            foreach (var obs in _obstacles)
+            {
+                if (obs == null) continue;
+                Rect existingRect = MakeJetRect(obs.transform.position, obs.transform.localScale.x, OverlapSeparationScale);
+                if (candidateRect.Overlaps(existingRect)) return false;
+            }
+            CreateObstacle(pos, scale);
+            return true;
+        }
+
+        /// <summary>
+        /// Linearly interpolate the sampled-trajectory Y at the given X. Returns NaN if X is
+        /// outside the trajectory's sampled range.
+        /// </summary>
+        private float SampleTrajectoryY(float x)
+        {
+            if (_safeTrajectory == null || _safeTrajectory.Length < 2) return float.NaN;
+
+            for (int i = 0; i < _safeTrajectory.Length - 1; i++)
+            {
+                Vector2 a = _safeTrajectory[i];
+                Vector2 b = _safeTrajectory[i + 1];
+                float lo = Mathf.Min(a.x, b.x);
+                float hi = Mathf.Max(a.x, b.x);
+                if (x < lo || x > hi) continue;
+                float t = Mathf.Approximately(b.x, a.x) ? 0f : (x - a.x) / (b.x - a.x);
+                return Mathf.Lerp(a.y, b.y, t);
+            }
+            return float.NaN;
         }
 
         private Vector2 GenerateRandomPosition(float minX, float maxX)
