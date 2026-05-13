@@ -55,8 +55,21 @@ namespace RocketLauncher
             // Crater MUST be spawned before the explosion so stem/lingering-fire/dust-ring
             // (anchored at the actual hole bottom via GroundScorch.GetGroundY) read the correct
             // depth. Otherwise they sit on the flat ground line and look "lưng chừng".
+            //
+            // Y is clamped to the GROUND SPRITE's actual top edge (not the GameConstants
+            // GroundTop constant), so the SpriteMask sits INSIDE the visible sprite bounds
+            // regardless of where the sprite was positioned in the scene.
             if (!isHit && position.y < GameConstants.GroundTop + GameConstants.CraterSpawnHeightThreshold)
-                GroundScorch.Spawn(position, maxHeight, _ground);
+            {
+                float craterY = GameConstants.GroundTop;
+                if (_ground != null)
+                {
+                    var groundSr = _ground.GetComponent<SpriteRenderer>();
+                    if (groundSr != null) craterY = groundSr.bounds.max.y;
+                }
+                Vector2 craterPos = new Vector2(position.x, craterY);
+                GroundScorch.Spawn(craterPos, maxHeight, _ground);
+            }
 
             ExplosionEffect.Spawn(position, isHit, isVerticalImpact);
             RocketDebris.Spawn(position, impactVelocity);

@@ -160,11 +160,11 @@ namespace RocketLauncher.Editor
                 so.FindProperty("_launcherVehicleTransform").objectReferenceValue = vehicle.transform;
 
             so.FindProperty("_obstacleSpawner").objectReferenceValue = os;
-            // Goal random X range — sits 25-47u ahead of launcher (car X ≈ -1.65 → world X 23-45).
-            // Verified by physics sim: worst-case rocket reach is ~48.9u at goal Y=10 (highest altitude),
-            // so 45 leaves ~4u buffer to guarantee every roll is reachable with the right angle + full power.
-            so.FindProperty("_targetMinX").floatValue = 23f;
-            so.FindProperty("_targetMaxX").floatValue = 45f;
+            // Goal random X range 8..36, Y range -4..8 from spawn (-7, -4). Sized so the player
+            // rocket (drag=0.4, thrust=12 for 0.6s, MaxLaunchForce=30) can always reach with ~5u
+            // buffer at the highest altitude — enough to maneuver around jet obstacles.
+            so.FindProperty("_targetMinX").floatValue = 8f;
+            so.FindProperty("_targetMaxX").floatValue = 36f;
             // LaunchController wired after it's created
             so.ApplyModifiedProperties();
 

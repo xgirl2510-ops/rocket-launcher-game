@@ -51,6 +51,21 @@ namespace RocketLauncher
         [Tooltip("If true, camera X never goes left of vehicle X — keeps view focused on the playfield.")]
         [SerializeField] private bool _clampLeftToVehicle = true;
 
+        [Header("Background Bounds")]
+        // World-space rect of the painted background (bg.png centred at 24.225, 18; size 80×50).
+        // Camera centre is clamped so the camera frustum (ortho × aspect) never leaves these bounds —
+        // stops the sky/ground BG from "running out of the frame" at high zoom-out.
+        [Tooltip("Left edge of background (world X).")]
+        [SerializeField] private float _bgMinX = -15.775f;
+        [Tooltip("Right edge of background (world X).")]
+        [SerializeField] private float _bgMaxX = 64.225f;
+        [Tooltip("Bottom edge of background (world Y).")]
+        [SerializeField] private float _bgMinY = -7f;
+        [Tooltip("Top edge of background (world Y).")]
+        [SerializeField] private float _bgMaxY = 43f;
+        [Tooltip("If true, camera centre is clamped inside the BG rect so empty space never shows.")]
+        [SerializeField] private bool _clampToBackgroundBounds = true;
+
         [Header("Return")]
         [SerializeField] private float _returnDuration = 1.0f;
 
@@ -184,17 +199,35 @@ namespace RocketLauncher
             // Dead-zone: never pull the camera BELOW its home Y just because rocket is low.
             float targetY = Mathf.Max(wantTargetY, _homeY);
 
-            Vector2 target = new Vector2(targetX, targetY);
-
-            Vector2 current = new Vector2(transform.position.x, transform.position.y);
-            Vector2 smoothed = Vector2.SmoothDamp(current, target, ref _smoothVelocity, _followSmoothTime);
-            SetCameraXY(smoothed.x, smoothed.y);
-
+            // Compute the next ortho size BEFORE clamping so the BG-bounds clamp uses the
+            // actual frustum the camera will have this frame, not the previous frame's.
             float dist = Vector2.Distance(_rocket.transform.position, _vehicleTransform.position);
             float zoomT = Mathf.Clamp01(dist / _zoomMaxDistance);
             float targetOrtho = Mathf.Lerp(_defaultOrthoSize, _maxOrthoSize, zoomT);
-            _camera.orthographicSize = Mathf.MoveTowards(
+            float nextOrtho = Mathf.MoveTowards(
                 _camera.orthographicSize, targetOrtho, _zoomOutSpeed * Time.deltaTime);
+            _camera.orthographicSize = nextOrtho;
+
+            // Clamp camera centre so the visible frustum never leaves the painted BG rect.
+            // If the BG is smaller than the frustum in some axis (rare at max zoom), we centre it.
+            if (_clampToBackgroundBounds)
+            {
+                float halfH = nextOrtho;
+                float halfW = nextOrtho * _camera.aspect;
+                float bgCentreX = (_bgMinX + _bgMaxX) * 0.5f;
+                float bgCentreY = (_bgMinY + _bgMaxY) * 0.5f;
+                float minX = _bgMinX + halfW;
+                float maxX = _bgMaxX - halfW;
+                float minY = _bgMinY + halfH;
+                float maxY = _bgMaxY - halfH;
+                targetX = minX <= maxX ? Mathf.Clamp(targetX, minX, maxX) : bgCentreX;
+                targetY = minY <= maxY ? Mathf.Clamp(targetY, minY, maxY) : bgCentreY;
+            }
+
+            Vector2 target = new Vector2(targetX, targetY);
+            Vector2 current = new Vector2(transform.position.x, transform.position.y);
+            Vector2 smoothed = Vector2.SmoothDamp(current, target, ref _smoothVelocity, _followSmoothTime);
+            SetCameraXY(smoothed.x, smoothed.y);
         }
 
         /// <summary>Called after rocket lands to smoothly pan back to vehicle.</summary>

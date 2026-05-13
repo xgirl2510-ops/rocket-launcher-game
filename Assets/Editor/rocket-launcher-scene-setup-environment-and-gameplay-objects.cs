@@ -66,12 +66,13 @@ namespace RocketLauncher.Editor
         {
             // Static world-space background at NATIVE sprite size (no scaling, no warping).
             // bg.png is 8000×5000 @ PPU 100 → world size 80 × 50.
-            //   bgCentreY = bgBottomY + bgHeight/2 = -5.74 + 25 = 19.26
+            //   bgBottomY = camBottomY at default zoom = camY(2) - ortho(9) = -7
+            //   bgCentreY = bgBottomY + bgHeight/2 = -7 + 25 = 18
             //   bgLeftX = carLeftX - 2 × carWidth = -8.755 - 7.02 = -15.775
             //   bgCentreX = bgLeftX + bgWidth/2 = -15.775 + 40 = 24.225
             // Component-side scaling is disabled (_targetWorldHeight = 0).
             var bg = CreateEmpty("Background", parent);
-            bg.transform.position = new Vector3(24.225f, 19.26f, 50f);
+            bg.transform.position = new Vector3(24.225f, 18f, 50f);
             var bgSr = bg.AddComponent<SpriteRenderer>();
             bgSr.sprite = LoadSpriteFromPng(BackgroundSpritePath, 8192);
             if (bgSr.sprite != null)
@@ -95,11 +96,10 @@ namespace RocketLauncher.Editor
             var groundCol = groundPhysics.AddComponent<BoxCollider2D>();
             groundCol.size = new Vector2(GroundWidth, groundColliderHeight);
 
-            // GroundVisual: static world-space dirt sprite. Top edge sits at the car's bottom
-            // edge (VehicleY - half car sprite height = -4.8 - 0.94 = -5.74), so the car sits
-            // ON top of the dirt strip. BG's bottom edge sits flush with this.
-            // Sprite is 25000×2048 px @ PPU 100 = 250×20.48 world units.
-            const float groundTopY = -5.74f;
+            // GroundVisual: static world-space dirt sprite. Top edge aligned with the car's
+            // bottom edge (= VehicleY - car sprite half-height = -4.8 - 0.936 = -5.736) so the
+            // car sits exactly on the dirt strip.
+            const float groundTopY = -5.736f;
             const float groundNaturalH = 2048f / 100f;
             var groundVisual = CreateEmpty("GroundVisual", parent);
             groundVisual.transform.position = new Vector3(GroundCenterX, groundTopY - groundNaturalH / 2f, 0f);
@@ -206,9 +206,12 @@ namespace RocketLauncher.Editor
             var impactHandler = go.GetComponent<ImpactEffectsHandler>();
             var ihSo = new SerializedObject(impactHandler);
             ihSo.FindProperty("_rocket").objectReferenceValue = rocketComp;
-            var groundGo = GameObject.Find("Ground");
-            if (groundGo != null)
-                ihSo.FindProperty("_ground").objectReferenceValue = groundGo.transform;
+            // Use GroundVisual (the SPRITE) for crater SpriteMask, not the invisible physics
+            // collider. SpriteMask interacts with SpriteRenderer.maskInteraction — physics GO
+            // has no renderer so masks would be invisible.
+            var groundVisualGo = GameObject.Find("GroundVisual");
+            if (groundVisualGo != null)
+                ihSo.FindProperty("_ground").objectReferenceValue = groundVisualGo.transform;
             ihSo.ApplyModifiedProperties();
 
             // Single sprite using rocket.png

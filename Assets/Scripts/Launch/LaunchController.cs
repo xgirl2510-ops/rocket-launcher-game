@@ -112,6 +112,10 @@ namespace RocketLauncher
 
             float launchForce = Mathf.Lerp(GameConstants.MinLaunchForce, GameConstants.MaxLaunchForce, normalizedForce);
 
+            // Diagnostic: prints actual force + drag distance used, so we can verify whether
+            // the player is reaching MaxLaunchForce. Remove once the launch curve feels right.
+            Debug.Log($"[Launch] normalizedForce={normalizedForce:F2} force={launchForce:F1}/{GameConstants.MaxLaunchForce} angleDeg={Mathf.Atan2(launchDirection.y, launchDirection.x) * Mathf.Rad2Deg:F1}");
+
             if (_roundManager != null)
             {
                 _roundManager.OnShotFired();

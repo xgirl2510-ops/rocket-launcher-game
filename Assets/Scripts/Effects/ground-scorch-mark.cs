@@ -91,7 +91,11 @@ namespace RocketLauncher
             PrepareGround(ground);
             EnsureMaskVariants();
 
-            float groundY = GameConstants.GroundTop;
+            // Crater Y is the caller-provided impact Y (the ImpactEffectsHandler clamps this
+            // to the ground sprite's actual top edge). Don't fall back to GameConstants.GroundTop
+            // here — that constant is the PHYSICS collider top, which may differ from the visual
+            // sprite top after the ground/BG layout was tuned to align with the car.
+            float groundY = impactPosition.y;
             float scale = CalculateCraterScale(maxHeight, groundY);
             float craterW = Random.Range(1.2f, 1.6f) * scale;
             float craterH = Random.Range(0.8f, 1.2f) * scale;
@@ -116,14 +120,17 @@ namespace RocketLauncher
         private static void RemoveOverlappingCraters(float impactX, float newCraterWidth)
         {
             // Use the same horizontal extent metric as GetGroundY (halfW = Width * 0.4).
-            // If an old crater's center sits inside the new crater's effective half-width
-            // (or vice versa), the visible holes overlap and the old one must go.
+            // Remove the old crater whenever the new crater's footprint reaches its center
+            // OR the old crater's footprint reaches the new center — i.e. dx < max(halfW).
+            // Previous formula (newHalfW + oldHalfW*0.5) left visible old rims when the new
+            // crater was smaller; this max() form guarantees the new shot fully replaces any
+            // crater it lands inside, including exact-same-spot repeats.
             float newHalfW = newCraterWidth * 0.4f;
             for (int i = _craters.Count - 1; i >= 0; i--)
             {
                 float oldHalfW = _craters[i].Width * 0.4f;
                 float dx = Mathf.Abs(impactX - _craters[i].X);
-                if (dx < newHalfW + oldHalfW * 0.5f)
+                if (dx < Mathf.Max(newHalfW, oldHalfW))
                 {
                     if (_allCraters[i] != null)
                         Object.Destroy(_allCraters[i]);
@@ -149,19 +156,114 @@ namespace RocketLauncher
             var parent = new GameObject("Crater");
             parent.transform.position = new Vector3(impactPosition.x, groundY, 0f);
 
-            // SpriteMask — cuts a smooth jagged hole through the ground sprite.
+            int variantIdx = Random.Range(0, MaskVariantCount);
+            Sprite blob = _maskVariants[variantIdx];
+
+            // ===== AAA-style realistic bomb crater =====
+            //
+            // Reference: Worms / Battlefield / Scorched-Earth 2D craters typically use:
+            //   • A pixel-perfect cut hole in the terrain (the SpriteMask below)
+            //   • A soft DARK GRADIENT RING just outside the rim — alpha peaks AT the rim and
+            //     fades outward (like an inner shadow). This is the "burnt zone".
+            //   • A handful of SCATTERED SMUDGE BLOBS around the rim — soft dark spots at
+            //     irregular positions that break up the perfect ellipse and look more organic.
+            //   • TINY DEBRIS SPECKS scattered further out — small dark dots like soot fallout.
+            //
+            // No clean streak lines (those read as "cartoon"). The look is built entirely from
+            // ellipse blobs at varied sizes/positions/opacities, layered to create soft gradient.
+
+            // All scorch elements are placed BELOW the rim (local Y <= 0). The crater's
+            // local origin sits at the ground top, so anything with positive Y would poke
+            // above the dirt surface and look wrong.
+
+            // --- 1. OUTER SOFT HALO --------------------------------------------------------
+            // Big diffuse dark ellipse, anchored so its top edge sits at the ground line.
+            // Offset down by half its height so only the lower half is visible.
+            float haloW = craterW * 1.6f;
+            float haloH = craterH * 1.5f;
+            SpawnScorchBlob(parent.transform, blob,
+                new Vector2(0f, -haloH * 0.5f),
+                new Vector2(haloW, haloH),
+                new Color(0.05f, 0.04f, 0.03f, 0.30f),
+                sortingOrder: 11);
+
+            // --- 2. INNER DARK RIM RING ----------------------------------------------------
+            // Tighter, darker ellipse hugging the rim. Also pushed down so it never extends
+            // above the ground surface.
+            float rimW = craterW * 1.25f;
+            float rimH = craterH * 1.18f;
+            SpawnScorchBlob(parent.transform, blob,
+                new Vector2(0f, -rimH * 0.5f),
+                new Vector2(rimW, rimH),
+                new Color(0.02f, 0.015f, 0.01f, 0.70f),
+                sortingOrder: 12);
+
+            // --- 3. SCATTERED SMUDGE BLOBS -------------------------------------------------
+            // Angles restricted to the LOWER semicircle (180°..360° → sin < 0 → below rim).
+            int smudgeCount = Random.Range(8, 13);
+            float rimRX = craterW * 0.55f;
+            float rimRY = craterH * 0.55f;
+            for (int i = 0; i < smudgeCount; i++)
+            {
+                float ang = Random.Range(Mathf.PI, Mathf.PI * 2f);
+                float radialOffset = Random.Range(0f, 0.4f);
+                Vector2 pos = new Vector2(
+                    (rimRX + craterW * 0.5f * radialOffset) * Mathf.Cos(ang),
+                    (rimRY + craterH * 0.5f * radialOffset) * Mathf.Sin(ang));
+                float blobSize = craterW * Random.Range(0.22f, 0.45f);
+                float aspectStretch = Random.Range(0.7f, 1.3f);
+                Vector2 blobScale = new Vector2(blobSize * aspectStretch, blobSize / aspectStretch);
+                Color smudgeColor = new Color(0.02f, 0.015f, 0.01f, Random.Range(0.45f, 0.75f));
+                SpawnScorchBlob(parent.transform, blob, pos, blobScale, smudgeColor, sortingOrder: 13);
+            }
+
+            // --- 4. BURNT DEBRIS SPECKS ----------------------------------------------------
+            // Angles also restricted to the lower semicircle so soot only scatters into dirt.
+            int speckCount = Random.Range(18, 28);
+            float speckRadiusMin = craterW * 0.55f;
+            float speckRadiusMax = craterW * 0.95f;
+            for (int i = 0; i < speckCount; i++)
+            {
+                float ang = Random.Range(Mathf.PI, Mathf.PI * 2f);
+                float r = Random.Range(speckRadiusMin, speckRadiusMax);
+                Vector2 pos = new Vector2(r * Mathf.Cos(ang), r * Mathf.Sin(ang) * 0.85f);
+                float speckSize = craterW * Random.Range(0.04f, 0.10f);
+                Color speckColor = new Color(0.02f, 0.01f, 0.01f, Random.Range(0.65f, 1.0f));
+                SpawnScorchBlob(parent.transform, blob, pos,
+                    new Vector2(speckSize, speckSize), speckColor, sortingOrder: 14);
+            }
+
+            // --- 5. THE HOLE ITSELF (SpriteMask cuts terrain) -------------------------------
             var maskGo = new GameObject("CraterMask");
             maskGo.transform.SetParent(parent.transform, false);
             float maskW = craterW * 1.15f;
             float maskH = craterH * 1.1f;
             maskGo.transform.localScale = new Vector3(maskW, maskH, 1f);
             var mask = maskGo.AddComponent<SpriteMask>();
-            mask.sprite = _maskVariants[Random.Range(0, MaskVariantCount)];
+            mask.sprite = blob;
             mask.alphaCutoff = 0.5f;
 
-            // The SpriteMask above cuts a hole in the ground sprite. No fill layer — the
-            // hole simply reveals whatever sits behind the ground (sky background by default).
             return parent;
+        }
+
+        /// <summary>
+        /// Spawn one ellipse blob sprite as part of the scorch composition.
+        /// Position is LOCAL to the crater parent. Scale is in world units.
+        /// </summary>
+        private static void SpawnScorchBlob(Transform craterParent, Sprite sprite,
+                                            Vector2 localPos, Vector2 worldScale,
+                                            Color color, int sortingOrder)
+        {
+            var go = new GameObject("ScorchBlob");
+            go.transform.SetParent(craterParent, false);
+            go.transform.localPosition = new Vector3(localPos.x, localPos.y, 0f);
+            go.transform.localScale = new Vector3(worldScale.x, worldScale.y, 1f);
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = sprite;
+            sr.color = color;
+            sr.sortingLayerName = "Environment";
+            sr.sortingOrder = sortingOrder;
+            sr.maskInteraction = SpriteMaskInteraction.None;
         }
 
         /// <summary>

@@ -429,9 +429,9 @@ MonoBehaviour:
   _launchController: {fileID: 2095289011}
   _reloadDelay: 1.5
   _targetMinX: 8
-  _targetMaxX: 35
+  _targetMaxX: 36
   _targetMinY: -4
-  _targetMaxY: 10
+  _targetMaxY: 8
 --- !u!114 &252624845
 MonoBehaviour:
   m_ObjectHideFlags: 0

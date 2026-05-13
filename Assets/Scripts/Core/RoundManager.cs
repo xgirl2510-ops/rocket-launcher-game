@@ -23,14 +23,13 @@ namespace RocketLauncher
         [SerializeField] private float _reloadDelay = 1.5f;
 
         [Header("Target Randomization")]
-        // Target sits 25-47u ahead of the launcher (car X ≈ -1.65, so world X 23-45).
-        // Verified by physics sim: at MaxLaunchForce=30, worst-case reach is ~48.9u when goal Y=10
-        // (the highest random altitude). 45 gives ~4u buffer so every roll is reachable with the
-        // right angle + full power, even when goal sits at maximum altitude.
-        [SerializeField] private float _targetMinX = 23f;
-        [SerializeField] private float _targetMaxX = 45f;
+        // Spawn at (-7, -4). Player rocket physics (drag=0.4, thrust=12 for 0.6s, MaxLaunchForce=30):
+        // simulated max reach is X=41 at Y=8 and X=50 at Y=-4. _targetMaxX=36 leaves ~5u buffer at the
+        // highest altitude so the player can still navigate around jet obstacles.
+        [SerializeField] private float _targetMinX = 8f;
+        [SerializeField] private float _targetMaxX = 36f;
         [SerializeField] private float _targetMinY = -4f;
-        [SerializeField] private float _targetMaxY = 10f;
+        [SerializeField] private float _targetMaxY = 8f;
 
         private int _missCount;
         private bool _isAutoPlaying;

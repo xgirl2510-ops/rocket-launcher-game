@@ -63,6 +63,9 @@ namespace RocketLauncher
         private void ResetGameState()
         {
             RocketDebris.ClearAll();
+            // Clear craters when starting a new round — the battlefield resets between rounds.
+            // (Within a round, missed shots accumulate craters via GroundScorch.Spawn, and
+            // RemoveOverlappingCraters dedupes shots that land on the same spot.)
             GroundScorch.ClearAll();
             ExplosionEffect.ClearAll();
             _rocket.gameObject.SetActive(true);

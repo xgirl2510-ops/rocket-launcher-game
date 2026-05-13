@@ -230,13 +230,9 @@ namespace RocketLauncher
         private void CreateSmokeStem(ExplosionVariation v)
         {
             var ps = NewSubsystem("SmokeStem");
-            // Anchor at the CRATER LIP (same anchor logic as LingeringFire) so the column
-            // rises from the visible mouth of the hole instead of being buried at the crater
-            // floor where it gets occluded by the dirt walls and looks detached from the fire.
+            // Anchor at the CRATER FLOOR — smoke column rises from the bottom of the hole.
             float craterFloorY = GroundScorch.GetGroundY(transform.position.x);
-            float craterDepth = GameConstants.GroundTop - craterFloorY; // positive
-            float anchorY = craterFloorY + craterDepth * 0.3f;
-            float groundLocalY = anchorY - transform.position.y;
+            float groundLocalY = craterFloorY - transform.position.y;
             ps.transform.localPosition = new Vector3(0f, groundLocalY, 0f);
 
             var main = ps.main;
@@ -309,12 +305,9 @@ namespace RocketLauncher
         private void CreateLingeringFire(ExplosionVariation v)
         {
             var ps = NewSubsystem("LingeringFire");
-            // Anchor a bit ABOVE the crater floor so flames are clearly visible inside the bowl
-            // — not buried under the dirt ridge of the crater wall. Lift = 30% of crater depth.
+            // Anchor at the CRATER FLOOR — flames burn from the bottom of the hole.
             float craterFloorY = GroundScorch.GetGroundY(transform.position.x);
-            float craterDepth = GameConstants.GroundTop - craterFloorY; // positive number
-            float anchorY = craterFloorY + craterDepth * 0.3f;
-            float groundLocalY = anchorY - transform.position.y;
+            float groundLocalY = craterFloorY - transform.position.y;
             ps.transform.localPosition = new Vector3(0f, groundLocalY, 0f);
 
             var main = ps.main;
