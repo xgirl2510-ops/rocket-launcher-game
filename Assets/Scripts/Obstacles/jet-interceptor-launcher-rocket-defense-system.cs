@@ -46,7 +46,9 @@ namespace RocketLauncher
 
         private void Start()
         {
-            _playerRocket = Object.FindFirstObjectByType<Rocket>();
+            // FindAnyObjectByType is the Unity 6 successor to deprecated FindFirstObjectByType
+            // (no instance-ID ordering, fastest single-instance lookup).
+            _playerRocket = Object.FindAnyObjectByType<Rocket>();
         }
 
         /// <summary>
@@ -57,11 +59,7 @@ namespace RocketLauncher
         /// </summary>
         public void OnFlaggedAsVictim(Vector2 rendezvous, float timeToRendezvous, bool rocketAscending)
         {
-            if (_playerRocket == null) _playerRocket = Object.FindFirstObjectByType<Rocket>();
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-            Debug.Log($"[Interceptor] Victim launcher at {transform.position} received OnFlaggedAsVictim. " +
-                      $"playerRocket={(_playerRocket != null ? "OK" : "NULL")}, sprite={(_cachedInterceptorSprite != null ? "OK" : "NULL")}, ascending={rocketAscending}");
-#endif
+            if (_playerRocket == null) _playerRocket = Object.FindAnyObjectByType<Rocket>();
             if (_playerRocket == null || _cachedInterceptorSprite == null) return;
 
             FireInterceptor(rendezvous, timeToRendezvous, rocketAscending);
@@ -98,10 +96,6 @@ namespace RocketLauncher
 
             if (AudioManager.Instance != null)
                 AudioManager.Instance.PlayInterceptorLaunch();
-
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-            Debug.Log($"[Interceptor] Jet at {transform.position} fires homing missile — rendezvous {rendezvous} in {timeToRendezvous:F2}s");
-#endif
         }
     }
 }

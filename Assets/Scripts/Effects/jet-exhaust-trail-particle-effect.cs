@@ -78,10 +78,12 @@ namespace RocketLauncher
             main.startSize = 0.10f;
             main.startColor = ShiftHue(_coreTint, _hueShiftDegrees);
             main.simulationSpace = ParticleSystemSimulationSpace.Local;
-            main.maxParticles = 200;
+            // Halved from 200/80 — with ~20 jets the original budget hit 4000 core particles
+            // alone at 1600/s emission. Visual change is imperceptible at jet scale (0.2).
+            main.maxParticles = 90;
 
             var coreEmission = ps.emission;
-            coreEmission.rateOverTime = 80f * _emissionMultiplier;
+            coreEmission.rateOverTime = 40f * _emissionMultiplier;
 
             var shape = ps.shape;
             shape.shapeType = ParticleSystemShapeType.Cone;
@@ -129,10 +131,11 @@ namespace RocketLauncher
             main.startSize = 0.18f;
             main.startColor = Color.white;
             main.simulationSpace = ParticleSystemSimulationSpace.Local;
-            main.maxParticles = 150;
+            // Halved from 150/50 — flame is the most fill-rate-heavy layer (additive blend).
+            main.maxParticles = 70;
 
             var flameEmission = ps.emission;
-            flameEmission.rateOverTime = 50f * _emissionMultiplier;
+            flameEmission.rateOverTime = 25f * _emissionMultiplier;
 
             var shape = ps.shape;
             shape.shapeType = ParticleSystemShapeType.Cone;
@@ -187,10 +190,11 @@ namespace RocketLauncher
             main.startSize = 0.26f;
             main.startColor = Color.white;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.maxParticles = 100;
+            // Halved from 100/25.
+            main.maxParticles = 50;
 
             var smokeEmission = ps.emission;
-            smokeEmission.rateOverTime = 25f * _emissionMultiplier;
+            smokeEmission.rateOverTime = 13f * _emissionMultiplier;
 
             var shape = ps.shape;
             shape.shapeType = ParticleSystemShapeType.Cone;

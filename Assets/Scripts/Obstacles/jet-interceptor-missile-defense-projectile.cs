@@ -53,11 +53,15 @@ namespace RocketLauncher
 
         // Configuration
         private Transform _target;             // player rocket transform
+        private Rocket _targetRocket;          // cached Rocket on _target (avoid per-frame GetComponent)
         private Vector2 _jetPos;
         private float _detectionRange;
         private float _detectionRangeSqr;
         private bool _directShot;              // ascending impact → kill anywhere
         private bool _boostEnabled = true;     // false on cap jets — they cruise at ChaseSpeed even in range
+        // Camera cached at Initialize so per-frame ClampInsideViewport doesn't pay for a
+        // Camera.main lookup (tag scan) every Update across every live interceptor.
+        private Camera _cachedCamera;
 
         // Phase state
         private enum Phase { Drop, Curve, Chase }
@@ -73,6 +77,8 @@ namespace RocketLauncher
                                bool boostEnabled)
         {
             _target = target;
+            _targetRocket = target != null ? target.GetComponent<Rocket>() : null;
+            _cachedCamera = Camera.main;
             _jetPos = jetPos;
             _detectionRange = detectionRange;
             _detectionRangeSqr = detectionRange * detectionRange;
@@ -203,8 +209,7 @@ namespace RocketLauncher
         private Vector2 ComputeBehindRocketHeading()
         {
             Vector2 rocketPos = _target.position;
-            var rb = _target.GetComponent<Rocket>();
-            Vector2 rocketVel = rb != null ? rb.LinearVelocity : Vector2.zero;
+            Vector2 rocketVel = _targetRocket != null ? _targetRocket.LinearVelocity : Vector2.zero;
             Vector2 velDir = rocketVel.sqrMagnitude > 0.01f ? rocketVel.normalized : Vector2.right;
 
             // Tail point = rocket's current position minus a small lead distance along its velocity.
@@ -258,8 +263,7 @@ namespace RocketLauncher
             if (killAllowed && (Vector2.Distance(nextPos, _target.position) < KillRadius || dist < KillRadius))
             {
                 Vector2 midpoint = (nextPos + (Vector2)_target.position) * 0.5f;
-                var rocket = _target.GetComponent<Rocket>();
-                if (rocket != null) rocket.ForceLand();
+                if (_targetRocket != null) _targetRocket.ForceLand();
                 transform.position = nextPos;
                 Detonate(midpoint);
                 return;
@@ -282,7 +286,10 @@ namespace RocketLauncher
         /// <summary>Clamp position to camera viewport so missile stays visible at all times.</summary>
         private void ClampInsideViewport()
         {
-            var cam = Camera.main;
+            // Re-acquire Camera.main only if cache went null (scene reload). Otherwise reuse
+            // the reference captured at Initialize — Camera.main scans tags every call.
+            if (_cachedCamera == null) _cachedCamera = Camera.main;
+            var cam = _cachedCamera;
             if (cam == null) return;
             const float Padding = 0.6f;
 
