@@ -307,9 +307,17 @@ namespace RocketLauncher
 
         private void SetState(CameraState newState)
         {
+            // If we were mid-pan (Intro/Returning/LookingAtTarget) and getting cut off, snap
+            // the ortho size to the default so FollowRocket starts its zoom-out from a known
+            // baseline. Without this, a rocket launched while ReturnToVehicleCoroutine is still
+            // lerping leaves the camera at an intermediate zoom and the first follow frame
+            // appears to "pop" as MoveTowards corrects the size.
+            bool wasMidPan = _activeCoroutine != null;
             StopActiveCoroutine();
             _currentState = newState;
             _smoothVelocity = Vector2.zero;
+            if (wasMidPan && newState == CameraState.Following && _camera != null)
+                _camera.orthographicSize = _defaultOrthoSize;
         }
 
         /// <summary>Trigger screen shake. Small shake on miss, bigger on hit.</summary>

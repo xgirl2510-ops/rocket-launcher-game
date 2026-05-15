@@ -71,22 +71,22 @@ namespace RocketLauncher
         /// from launchPos with v0 = direction × force; if it enters a jet's DetectionRange,
         /// that jet fires its interceptor right away with the rendezvous point.
         /// </summary>
-        public void OnRocketLaunched(Vector2 launchPos, Vector2 launchDirection, float launchForce)
+        public void OnRocketLaunched(Vector2 launchPos, Vector2 launchDirection, float launchForce, RocketFlightParams flightParams)
         {
             ClearPending();
             // Defer the heavy arc simulation (2400 swept CircleCasts) to NEXT frame so the
             // launch frame itself only pays for Rocket.AddForce + audio + trail spawn. Without
             // this defer, the predictor work piles onto the same frame as the impulse and the
             // player sees a visible hitch the instant the rocket leaves the slingshot.
-            StartCoroutine(PredictNextFrame(launchPos, launchDirection, launchForce));
+            StartCoroutine(PredictNextFrame(launchPos, launchDirection, launchForce, flightParams));
         }
 
-        private IEnumerator PredictNextFrame(Vector2 launchPos, Vector2 launchDirection, float launchForce)
+        private IEnumerator PredictNextFrame(Vector2 launchPos, Vector2 launchDirection, float launchForce, RocketFlightParams flightParams)
         {
             yield return null;
 
             Vector2 v0 = launchDirection * launchForce;   // mass = 1, so velocity == impulse
-            var hit = FindFirstJetInRange(launchPos, v0, out Vector2 rendezvous, out float timeToRendezvous, out bool isAscending);
+            var hit = FindFirstJetInRange(launchPos, v0, flightParams, out Vector2 rendezvous, out float timeToRendezvous, out bool isAscending);
 
             if (hit == null) yield break;
 
@@ -189,16 +189,15 @@ namespace RocketLauncher
         /// Walk the predicted arc using the SAME physics the rocket experiences (impulse + thrust
         /// + drag + gravity). At each step we sweep a circle from prevPos→curPos and pick the
         /// jet collider hit closest along the segment — that's the rocket's first physical
-        /// rendezvous with a defender.
+        /// rendezvous with a defender. Flight constants come from RocketFlightParams (live
+        /// SerializedField values on the Rocket) so designer tweaks stay in sync with prediction.
         /// </summary>
-        private JetInterceptorLauncher FindFirstJetInRange(Vector2 pos, Vector2 vel, out Vector2 rendezvous, out float time, out bool isAscending)
+        private JetInterceptorLauncher FindFirstJetInRange(Vector2 pos, Vector2 vel, RocketFlightParams flightParams, out Vector2 rendezvous, out float time, out bool isAscending)
         {
-            const float g = 9.81f;
-            // Must match Rocket._thrustDuration / _thrustForce / _airDrag exactly so prediction
-            // matches the rocket's real flight path.
-            const float thrustDuration = 0.6f;
-            const float thrustForce = 12f;
-            const float drag = 0.4f;
+            float g = flightParams.Gravity;
+            float thrustDuration = flightParams.ThrustDuration;
+            float thrustForce = flightParams.ThrustForce;
+            float drag = flightParams.Drag;
 
             float dt = MaxPredictTime / ArcSteps;
 

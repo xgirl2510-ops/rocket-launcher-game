@@ -121,7 +121,7 @@ namespace RocketLauncher
             // dive solver simulated those exact params to find this (dir, force) pair. Switching
             // to pure ballistic would diverge from the solved trajectory and miss the dive slot.
             _rocket.Launch(dir, force);
-            RocketTrajectoryPredictor.Instance.OnRocketLaunched(_spawnPoint.position, dir, force);
+            RocketTrajectoryPredictor.Instance.OnRocketLaunched(_spawnPoint.position, dir, force, _rocket.GetFlightParams());
             if (AudioManager.Instance != null)
             {
                 AudioManager.Instance.PlayLaunch();

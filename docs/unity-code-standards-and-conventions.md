@@ -15,6 +15,15 @@
 | Interface | IPascalCase | `ILaunchable` |
 | Event | On + PascalCase | `OnRocketLanded`, `OnTargetHit` |
 
+## File Naming
+
+Two conventions co-exist by design:
+
+- **PascalCase** — MonoBehaviour primary-class files and core static classes whose file name must match the class identity for Unity to bind components. Examples: `Rocket.cs`, `CameraController.cs`, `LaunchController.cs`, `AudioManager.cs`, `RoundManager.cs`, `AdManager.cs`, `AimArrow.cs`, `GameConstants.cs`, `GameRoundTracker.cs`.
+- **kebab-case (long descriptive)** — supporting scripts, partial classes, effects, helpers, enums, and any file whose name doesn't have to match a primary class identifier. Examples: `rocket-trajectory-first-hit-predictor-singleton.cs`, `jet-exhaust-trail-particle-effect.cs`, `world-pause-controller-freeze-physics-particles-audio-without-timescale.cs`.
+
+Rationale: Unity treats the MonoBehaviour file name as the binding key when wiring components in a scene. Renaming `Rocket.cs` → `rocket.cs` would break every Rocket component reference in `GameScene.unity`. Kebab-case is preferred everywhere else because long descriptive file names are self-documenting under LLM-driven file search tools (Grep, Glob).
+
 ## Project Folder Structure
 
 ```

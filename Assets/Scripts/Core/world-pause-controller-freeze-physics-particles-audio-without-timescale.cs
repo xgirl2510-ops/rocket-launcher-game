@@ -33,7 +33,7 @@ namespace RocketLauncher
             if (_frozen) return;
             _frozen = true;
 
-            foreach (var rb in Object.FindObjectsByType<Rigidbody2D>(FindObjectsSortMode.None))
+            foreach (var rb in Object.FindObjectsByType<Rigidbody2D>(FindObjectsInactive.Exclude))
                 rb.simulated = false;
 
             AudioListener.pause = true;
@@ -45,7 +45,7 @@ namespace RocketLauncher
             if (!_frozen) return;
             _frozen = false;
 
-            foreach (var rb in Object.FindObjectsByType<Rigidbody2D>(FindObjectsSortMode.None))
+            foreach (var rb in Object.FindObjectsByType<Rigidbody2D>(FindObjectsInactive.Exclude))
                 rb.simulated = true;
 
             AudioListener.pause = false;

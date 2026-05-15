@@ -126,9 +126,10 @@ namespace RocketLauncher
 
             // Notify predictor with the EXACT launch parameters so it can find the first-hit
             // jet immediately — without depending on physics having stepped to populate
-            // rb.linearVelocity. The predictor will tell that single jet to fire its interceptor.
+            // rb.linearVelocity. Flight params are pulled live from the rocket so any Inspector
+            // tweak to thrust/drag stays in sync with prediction.
             RocketTrajectoryPredictor.Instance.OnRocketLaunched(
-                _rocket.transform.position, launchDirection, launchForce);
+                _rocket.transform.position, launchDirection, launchForce, _rocket.GetFlightParams());
 
             if (AudioManager.Instance != null)
             {
