@@ -142,6 +142,14 @@ namespace RocketLauncher
             if (_targetTransform != null)
                 SetCameraXY(_targetTransform.position.x, _homeY);
 
+            // Swallow the first 2 frames so the heavy startup work (RoundManager.Awake target
+            // re-roll + ObstacleSpawner solver + ~20 jet Instantiate + particle-system builds)
+            // completes BEFORE the pan starts measuring deltaTime. Without this, the first
+            // PanCoroutine step gets a 100-400ms deltaTime spike from the load frame and the
+            // intro camera visibly jumps instead of gliding.
+            yield return null;
+            yield return null;
+
             yield return new WaitForSeconds(_introPauseDuration);
 
             yield return PanCoroutine(CurrentXY, VehicleHome, _introPanDuration);
@@ -321,7 +329,9 @@ namespace RocketLauncher
             float elapsed = 0f;
             while (elapsed < duration)
             {
-                elapsed += Time.deltaTime;
+                // Cap deltaTime so a 1-frame hitch (asset load, GC, particle alloc) can't make
+                // the pan teleport across the screen. 1/30s = 33ms — anything longer gets clamped.
+                elapsed += Mathf.Min(Time.deltaTime, 0.0333f);
                 float t = Mathf.SmoothStep(0f, 1f, elapsed / duration);
                 SetCameraXY(Vector2.Lerp(from, to, t));
                 if (lerpOrtho) _camera.orthographicSize = Mathf.Lerp(orthoFrom, orthoTo, t);

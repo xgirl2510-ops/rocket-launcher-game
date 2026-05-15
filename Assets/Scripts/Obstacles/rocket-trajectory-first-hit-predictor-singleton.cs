@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -48,6 +49,15 @@ namespace RocketLauncher
         private float _pendingFlagTime;          // Time.time when flagged (used to age out the rendezvous estimate)
         private bool _pendingAscending;
         private Rocket _playerRocket;
+        private Camera _mainCamera;
+
+        // Buffer reused by CircleCast to avoid per-step heap alloc inside the predict loop.
+        // Sized to comfortably cover the jet count we ever spawn (~20) plus collider neighbours.
+        private readonly RaycastHit2D[] _hitBuffer = new RaycastHit2D[16];
+        // Contact filter for the unfiltered CircleCast (matches the unconditional behaviour
+        // the deprecated CircleCastAll/CircleCastNonAlloc had). Initialised at first use.
+        private ContactFilter2D _hitFilter;
+        private bool _hitFilterReady;
 
         public void Register(JetInterceptorLauncher jet) => _jets.Add(jet);
         public void Unregister(JetInterceptorLauncher jet)
@@ -63,22 +73,22 @@ namespace RocketLauncher
         /// </summary>
         public void OnRocketLaunched(Vector2 launchPos, Vector2 launchDirection, float launchForce)
         {
-            Vector2 v0 = launchDirection * launchForce;   // mass = 1, so velocity == impulse
-
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-            Debug.Log($"[Predictor] OnRocketLaunched called. pos={launchPos}, v0={v0}, jets registered={_jets.Count}");
-#endif
-
             ClearPending();
+            // Defer the heavy arc simulation (2400 swept CircleCasts) to NEXT frame so the
+            // launch frame itself only pays for Rocket.AddForce + audio + trail spawn. Without
+            // this defer, the predictor work piles onto the same frame as the impulse and the
+            // player sees a visible hitch the instant the rocket leaves the slingshot.
+            StartCoroutine(PredictNextFrame(launchPos, launchDirection, launchForce));
+        }
+
+        private IEnumerator PredictNextFrame(Vector2 launchPos, Vector2 launchDirection, float launchForce)
+        {
+            yield return null;
+
+            Vector2 v0 = launchDirection * launchForce;   // mass = 1, so velocity == impulse
             var hit = FindFirstJetInRange(launchPos, v0, out Vector2 rendezvous, out float timeToRendezvous, out bool isAscending);
 
-            if (hit == null)
-            {
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-                Debug.Log("[Predictor] No jet on predicted path. Rocket flies free.");
-#endif
-                return;
-            }
+            if (hit == null) yield break;
 
             // Stage as pending — actual fire happens in Update() the first frame this jet is
             // FULLY visible inside the camera viewport. Player must see the threatening jet
@@ -88,10 +98,6 @@ namespace RocketLauncher
             _pendingTimeToRendezvous = timeToRendezvous;
             _pendingAscending = isAscending;
             _pendingFlagTime = Time.time;
-
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-            Debug.Log($"[Predictor] Pending victim jet at {hit.transform.position}, rendezvous {rendezvous}, time {timeToRendezvous:F2}s, ascending={isAscending}. Will fire when on-screen.");
-#endif
         }
 
         private void Update()
@@ -130,10 +136,6 @@ namespace RocketLauncher
             float delay = Time.time - _pendingFlagTime;
             float adjustedTime = Mathf.Max(0.1f, _pendingTimeToRendezvous - delay);
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-            string reason = _pendingAscending ? "rocket entered DetectionRange" : "jet now ON-SCREEN";
-            Debug.Log($"[Predictor] Firing ({reason}) after {delay:F2}s wait. ascending={_pendingAscending}, adjusted time={adjustedTime:F2}s.");
-#endif
             _pendingVictim.OnFlaggedAsVictim(_pendingRendezvous, adjustedTime, _pendingAscending);
             ClearPending();
         }
@@ -153,9 +155,10 @@ namespace RocketLauncher
         /// only fires when the player can clearly see the threatening jet, not when only its
         /// edge is peeking on-screen.
         /// </summary>
-        private static bool IsJetFullyOnScreen(JetInterceptorLauncher jet)
+        private bool IsJetFullyOnScreen(JetInterceptorLauncher jet)
         {
-            var cam = Camera.main;
+            if (_mainCamera == null) _mainCamera = Camera.main;
+            var cam = _mainCamera;
             if (cam == null) return true;   // safety: no camera → don't gate
             var sr = jet.GetComponent<SpriteRenderer>();
             // Fall back to point-test if no renderer (shouldn't happen for jets).
@@ -184,13 +187,9 @@ namespace RocketLauncher
 
         /// <summary>
         /// Walk the predicted arc using the SAME physics the rocket experiences (impulse + thrust
-        /// + drag + gravity). For each step we BOTH:
-        ///   • Sweep a segment from prevPos→curPos and check which jet collider it intersects
-        ///     first along the segment — guarantees we pick the jet the rocket physically hits
-        ///     (not just the first jet found in HashSet iteration order).
-        ///   • Track each jet's first DetectionRange-entry sample independently (per-jet dict),
-        ///     so the rendezvous handed to the interceptor is the moment the rocket actually
-        ///     crosses INTO that specific jet's range.
+        /// + drag + gravity). At each step we sweep a circle from prevPos→curPos and pick the
+        /// jet collider hit closest along the segment — that's the rocket's first physical
+        /// rendezvous with a defender.
         /// </summary>
         private JetInterceptorLauncher FindFirstJetInRange(Vector2 pos, Vector2 vel, out Vector2 rendezvous, out float time, out bool isAscending)
         {
@@ -202,7 +201,6 @@ namespace RocketLauncher
             const float drag = 0.4f;
 
             float dt = MaxPredictTime / ArcSteps;
-            float detectSqr = JetInterceptorLauncher.DetectionRange * JetInterceptorLauncher.DetectionRange;
 
             Vector2 thrustDir = vel.sqrMagnitude > 0.0001f ? vel.normalized : Vector2.right;
 
@@ -216,10 +214,6 @@ namespace RocketLauncher
             // Initialized to +∞ → if vy never goes negative within the predict window, every
             // impact counts as ascending.
             float peakTime = float.PositiveInfinity;
-
-            // Per-jet tracking of first range-entry — independent slot per jet so multiple
-            // jets being grazed doesn't overwrite each other's rendezvous candidate.
-            var rangeEntry = new System.Collections.Generic.Dictionary<JetInterceptorLauncher, (Vector2 pt, float t)>();
 
             for (int i = 1; i <= ArcSteps; i++)
             {
@@ -244,19 +238,7 @@ namespace RocketLauncher
                 if (float.IsPositiveInfinity(peakTime) && prevVy > 0f && simVel.y <= 0f)
                     peakTime = t;
 
-                // Step 1: range-entry tracking — if THIS sample is the first time arc enters a
-                // jet's DetectionRange, record it. (One entry per jet, kept across iterations.)
-                foreach (var jet in _jets)
-                {
-                    if (jet == null) continue;
-                    Vector2 jetPos = jet.transform.position;
-                    if ((simPos - jetPos).sqrMagnitude <= detectSqr && !rangeEntry.ContainsKey(jet))
-                    {
-                        rangeEntry[jet] = (simPos, t);
-                    }
-                }
-
-                // Step 2: swept CIRCLE against ALL physics colliders along the prevPos→simPos
+                // Swept CIRCLE against ALL physics colliders along the prevPos→simPos
                 // segment. CircleCast uses a radius matching the rocket's collider half-width
                 // (~0.3u) so "near miss" arcs that graze the jet silhouette get caught — pure
                 // Linecast would miss them because the rocket's actual flight (drag/thrust may
@@ -269,17 +251,25 @@ namespace RocketLauncher
                 {
                     const float RocketRadius = 0.35f;
                     Vector2 dir = segVec / segLen;
-                    var hits = Physics2D.CircleCastAll(prevPos, RocketRadius, dir, segLen);
-                    float bestFrac = float.MaxValue;
-                    for (int h = 0; h < hits.Length; h++)
+                    // CircleCast(filter, results) reuses _hitBuffer instead of allocating a
+                    // fresh RaycastHit2D[] every step (would be 2400 allocs/launch otherwise).
+                    if (!_hitFilterReady)
                     {
-                        var hitJet = hits[h].collider.GetComponent<JetInterceptorLauncher>();
+                        _hitFilter = ContactFilter2D.noFilter;
+                        _hitFilter.useTriggers = true;
+                        _hitFilterReady = true;
+                    }
+                    int count = Physics2D.CircleCast(prevPos, RocketRadius, dir, _hitFilter, _hitBuffer, segLen);
+                    float bestFrac = float.MaxValue;
+                    for (int h = 0; h < count; h++)
+                    {
+                        var hitJet = _hitBuffer[h].collider.GetComponent<JetInterceptorLauncher>();
                         if (hitJet == null || !_jets.Contains(hitJet)) continue;
-                        if (hits[h].fraction < bestFrac)
+                        if (_hitBuffer[h].fraction < bestFrac)
                         {
-                            bestFrac = hits[h].fraction;
+                            bestFrac = _hitBuffer[h].fraction;
                             closestHit = hitJet;
-                            closestHitPoint = hits[h].point;
+                            closestHitPoint = _hitBuffer[h].point;
                         }
                     }
                 }
