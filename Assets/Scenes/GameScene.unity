@@ -2537,6 +2537,7 @@ GameObject:
   - component: {fileID: 1287279796}
   - component: {fileID: 1287279795}
   - component: {fileID: 1287279794}
+  - component: {fileID: 1287279798}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -2654,6 +2655,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1287279798
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1287279793}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c03cd35029b664763a6a50c334206960, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RocketLauncher.Runtime::RocketLauncher.CameraBannerAdViewportReservation
+  _bannerHeightFraction: 0.1
+  _compensateOrthoSize: 1
+  _reserveOnAwake: 1
 --- !u!1 &1317578843
 GameObject:
   m_ObjectHideFlags: 0
