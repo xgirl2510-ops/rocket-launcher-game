@@ -314,15 +314,18 @@ namespace RocketLauncher
             if (_hasHit) return;
             // Only kill in chase phase — drop/curve are "harmless" cinematic phases.
             if (_phase != Phase.Chase) return;
-            if (!other.CompareTag("Player")) return;
+            // Identify the rocket by component, not tag. "Player" was never registered in
+            // TagManager so CompareTag("Player") used to throw UnityException and the trigger
+            // kill path was dead — only the proximity-radius kill in ChaseStep was firing.
+            var rocket = other.GetComponent<Rocket>();
+            if (rocket == null) return;
 
             float rocketDistFromJetSqr = ((Vector2)other.transform.position - _jetPos).sqrMagnitude;
             if (!_directShot && rocketDistFromJetSqr > _detectionRangeSqr) return;
 
             Vector2 impact = (transform.position + other.transform.position) * 0.5f;
             Detonate(impact);
-            var rocket = other.GetComponent<Rocket>();
-            if (rocket != null) rocket.ForceLand();
+            rocket.ForceLand();
         }
 
         private void Detonate(Vector2 position)

@@ -33,6 +33,10 @@ namespace RocketLauncher
         private void Awake()
         {
             _camera = Camera.main;
+            // Mobile: allow multi-touch so the legacy Input.GetMouseButton path (mapped from
+            // primary touch) doesn't get blocked by a stray second finger. Short-term mitigation
+            // until LaunchController is migrated to the new Input System package.
+            Input.multiTouchEnabled = true;
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (_camera == null) Debug.LogError("[LaunchController] No main camera found.", this);
 #endif

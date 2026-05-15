@@ -18,26 +18,33 @@ namespace RocketLauncher
         [SerializeField] private float _hitShakeDuration = 0.55f;
         [SerializeField] private float _hitShakeMagnitude = 0.45f;
 
+        private bool _subscribed;
+
         private void Start()
         {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (_rocket == null)
                 Debug.LogError("[ImpactEffectsHandler] _rocket not assigned — impact effects disabled.", this);
+#endif
             if (_cameraController == null)
                 _cameraController = Camera.main != null ? Camera.main.GetComponent<CameraController>() : null;
-#endif
-        }
 
-        private void OnEnable()
-        {
-            if (_rocket != null)
+            // Subscribe in Start (not OnEnable) so we attach exactly once regardless of how many
+            // times the component is toggled at runtime. Pairs with OnDestroy unsubscribe below.
+            if (_rocket != null && !_subscribed)
+            {
                 _rocket.OnImpact += HandleImpact;
+                _subscribed = true;
+            }
         }
 
-        private void OnDisable()
+        private void OnDestroy()
         {
-            if (_rocket != null)
+            if (_rocket != null && _subscribed)
+            {
                 _rocket.OnImpact -= HandleImpact;
+                _subscribed = false;
+            }
         }
 
         private void HandleImpact(Vector2 position, bool isHit, float maxHeight, Vector2 impactVelocity)
