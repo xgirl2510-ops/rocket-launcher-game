@@ -23,7 +23,15 @@ namespace RocketLauncher
 
         private Rocket _playerRocket;
 
+        // Cap jets above the target intentionally miss — their interceptors never boost so the
+        // player can still slip through the dive slot. ObstacleSpawner sets this to false on the
+        // two cap jets after instantiation. Default true matches every other (shield/tail/filler) jet.
+        [SerializeField] private bool _boostEnabled = true;
+
         public static void SetInterceptorSprite(Sprite sprite) => _cachedInterceptorSprite = sprite;
+
+        /// <summary>Disable the last-second speed boost on this jet's interceptor (cap jets only).</summary>
+        public void SetBoostEnabled(bool enabled) => _boostEnabled = enabled;
 
         private void OnEnable()
         {
@@ -84,7 +92,7 @@ namespace RocketLauncher
             // Jet sprite (protector.png) has its nose pointing LEFT in the raw PNG, and the jet
             // GameObject has no flip applied — so the jet's "forward" in world space = -transform.right.
             Vector2 jetForward = -(Vector2)transform.right;
-            missile.Initialize(_playerRocket.transform, rendezvous, timeToRendezvous, transform.position, DetectionRange, rocketAscending, jetForward);
+            missile.Initialize(_playerRocket.transform, rendezvous, timeToRendezvous, transform.position, DetectionRange, rocketAscending, jetForward, _boostEnabled);
 
             trail.StartTrail();
 

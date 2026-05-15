@@ -57,6 +57,7 @@ namespace RocketLauncher
         private float _detectionRange;
         private float _detectionRangeSqr;
         private bool _directShot;              // ascending impact → kill anywhere
+        private bool _boostEnabled = true;     // false on cap jets — they cruise at ChaseSpeed even in range
 
         // Phase state
         private enum Phase { Drop, Curve, Chase }
@@ -68,13 +69,15 @@ namespace RocketLauncher
         // ---- Initialize ----
 
         public void Initialize(Transform target, Vector2 rendezvous, float timeToRendezvous,
-                               Vector2 jetPos, float detectionRange, bool rocketAscending, Vector2 jetForward)
+                               Vector2 jetPos, float detectionRange, bool rocketAscending, Vector2 jetForward,
+                               bool boostEnabled)
         {
             _target = target;
             _jetPos = jetPos;
             _detectionRange = detectionRange;
             _detectionRangeSqr = detectionRange * detectionRange;
             _directShot = rocketAscending;
+            _boostEnabled = boostEnabled;
 
             // Start at the jet's belly (slight Y offset down from centre).
             transform.position = new Vector3(jetPos.x, jetPos.y + DropBellyOffsetY, transform.position.z);
@@ -107,9 +110,14 @@ namespace RocketLauncher
 
         // Legacy overloads — use jet forward = world-left (matches protector.png nose-left default).
         public void Initialize(Transform target, Vector2 rendezvous, float timeToRendezvous,
+                               Vector2 jetPos, float detectionRange, bool rocketAscending, Vector2 jetForward)
+        {
+            Initialize(target, rendezvous, timeToRendezvous, jetPos, detectionRange, rocketAscending, jetForward, boostEnabled: true);
+        }
+        public void Initialize(Transform target, Vector2 rendezvous, float timeToRendezvous,
                                Vector2 jetPos, float detectionRange, bool rocketAscending)
         {
-            Initialize(target, rendezvous, timeToRendezvous, jetPos, detectionRange, rocketAscending, Vector2.left);
+            Initialize(target, rendezvous, timeToRendezvous, jetPos, detectionRange, rocketAscending, Vector2.left, boostEnabled: true);
         }
         public void Initialize(Transform target, Vector2 rendezvous, float timeToRendezvous)
         {
@@ -237,9 +245,12 @@ namespace RocketLauncher
             // Speed boost: when rocket is inside owner jet's DetectionRange, switch from cruise
             // to boost speed so the missile closes the gap fast enough to detonate before the
             // rocket escapes the range. Direct shots already kill anywhere so they don't need it.
+            // Cap jets (above target) have _boostEnabled=false — they intentionally miss so the
+            // player's dive can still slip through the slot between them.
             float rocketDistFromJetSqr = ((Vector2)_target.position - _jetPos).sqrMagnitude;
             bool rocketInRange = rocketDistFromJetSqr <= _detectionRangeSqr;
-            float speed = (!_directShot && rocketInRange) ? ChaseBoostSpeed : ChaseSpeed;
+            bool shouldBoost = _boostEnabled && !_directShot && rocketInRange;
+            float speed = shouldBoost ? ChaseBoostSpeed : ChaseSpeed;
             Vector2 nextPos = (Vector2)transform.position + _heading * speed * Time.deltaTime;
 
             // Detonation gate: rocket must be inside DetectionRange (lobbing shots) OR direct shot.

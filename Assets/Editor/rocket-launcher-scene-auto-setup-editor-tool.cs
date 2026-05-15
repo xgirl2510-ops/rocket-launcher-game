@@ -24,15 +24,30 @@ namespace RocketLauncher.Editor
                 "Setup Rocket Launcher Scene",
                 "Clear the current scene and rebuild all GameObjects?\n\nThis cannot be undone.",
                 "Setup Scene", "Cancel"))
+            {
+                Debug.Log("[SceneSetupTool] User cancelled — scene not rebuilt.");
                 return;
+            }
 
             Undo.IncrementCurrentGroup();
             Undo.SetCurrentGroupName("Setup Rocket Launcher Scene");
 
-            RunCoreSetup();
-
-            EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
-            Debug.Log("[SceneSetupTool] Scene setup complete. Press Ctrl+S to save.");
+            Debug.Log("[SceneSetupTool] Setup Scene started…");
+            try
+            {
+                RunCoreSetup();
+                EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+                Debug.Log("[SceneSetupTool] Scene setup complete. Press Ctrl+S to save.");
+            }
+            catch (System.Exception ex)
+            {
+                // Setup Scene mutates dozens of fields via SerializedObject; if any FindProperty
+                // returns null (because of a schema mismatch between editor tool and runtime), the
+                // exception used to be swallowed by the surrounding Undo machinery. Logging it
+                // here makes the root cause visible in Console.
+                Debug.LogError("[SceneSetupTool] Setup FAILED: " + ex.GetType().Name + " — " + ex.Message);
+                Debug.LogException(ex);
+            }
         }
 
         /// <summary>Batch-mode entry point — skips confirmation dialog, saves scene automatically.</summary>
@@ -71,31 +86,31 @@ namespace RocketLauncher.Editor
             if (tagManagerAsset != null)
                 Undo.RegisterCompleteObjectUndo(tagManagerAsset, "Rocket Launcher Scene Setup");
 
-            PreGenerateSprites();
+            // Per-step trace logs — when a step throws, the LAST trace identifies which step
+            // failed. Saved a lot of round-tripping when ArgumentNullException had no stack info.
+            Step("PreGenerateSprites"); PreGenerateSprites();
+            Step("ClearScene"); ClearScene();
+            Step("SetupTags"); SetupTags();
+            Step("SetupSortingLayers"); SetupSortingLayers();
+            Step("SetupLayer"); SetupLayer(8, "Rocket");
+            Step("ConfigurePhysics2DCollisionMatrix"); ConfigurePhysics2DCollisionMatrix();
+            Step("SetupCamera"); SetupCamera();
 
-            ClearScene();
-            SetupTags();
-            SetupSortingLayers();
-            SetupLayer(8, "Rocket");
-            ConfigurePhysics2DCollisionMatrix();
+            Step("CreateEmpty managers"); var managers  = CreateEmpty("--- MANAGERS ---");
+            Step("CreateEmpty env"); var envParent = CreateEmpty("--- ENVIRONMENT ---");
+            Step("CreateEmpty gameplay"); var gameplay  = CreateEmpty("--- GAMEPLAY ---");
+            Step("CreateEmpty input"); var inputSep  = CreateEmpty("--- INPUT ---");
+            Step("CreateEmpty ui"); var uiSep     = CreateEmpty("--- UI ---");
 
-            SetupCamera();
-
-            var managers  = CreateEmpty("--- MANAGERS ---");
-            var envParent = CreateEmpty("--- ENVIRONMENT ---");
-            var gameplay  = CreateEmpty("--- GAMEPLAY ---");
-            var inputSep  = CreateEmpty("--- INPUT ---");
-            var uiSep     = CreateEmpty("--- UI ---");
-
-            CreateEmpty("GameManager", managers);
-            SetupAudio(managers);
-            CreateEnvironment(envParent);
-            CreateGameplay(gameplay);
-            CreateCanvas(uiSep);
-            WireRoundManager(inputSep);
-            WireLaunchController(inputSep);
-            WireRoundManagerHUD(inputSep);
-            WireCameraController();
+            Step("CreateEmpty GameManager"); CreateEmpty("GameManager", managers);
+            Step("SetupAudio"); SetupAudio(managers);
+            Step("CreateEnvironment"); CreateEnvironment(envParent);
+            Step("CreateGameplay"); CreateGameplay(gameplay);
+            Step("CreateCanvas"); CreateCanvas(uiSep);
+            Step("WireRoundManager"); WireRoundManager(inputSep);
+            Step("WireLaunchController"); WireLaunchController(inputSep);
+            Step("WireRoundManagerHUD"); WireRoundManagerHUD(inputSep);
+            Step("WireCameraController"); WireCameraController();
 
             var eventSystem = CreateEmpty("EventSystem");
             eventSystem.AddComponent<UnityEngine.EventSystems.EventSystem>();
@@ -168,47 +183,64 @@ namespace RocketLauncher.Editor
             // LaunchController wired after it's created
             so.ApplyModifiedProperties();
 
-            // Wire ObstacleSpawner references
+            // Wire ObstacleSpawner references via safe assignment so a missing-field schema
+            // mismatch doesn't crash the whole Setup Scene run (each missing prop just logs).
             var osSo = new SerializedObject(os);
-            if (spawnPoint != null)
-                osSo.FindProperty("_spawnPoint").objectReferenceValue = spawnPoint;
-            if (target != null)
-                osSo.FindProperty("_targetTransform").objectReferenceValue = target.transform;
+            if (spawnPoint != null) SafeAssignRef(osSo, "_spawnPoint", spawnPoint);
+            if (target != null) SafeAssignRef(osSo, "_targetTransform", target.transform);
+
             // Jet fighter sprite for obstacles (indestructible, matches launcher truck width).
             var obstacleSprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Sprites/Generated/protector.png");
-            if (obstacleSprite != null)
-                osSo.FindProperty("_obstacleSprite").objectReferenceValue = obstacleSprite;
-            else
-                Debug.LogWarning("[SceneSetupTool] protector.png not found — obstacles will use solid square fallback.");
+            if (obstacleSprite != null) SafeAssignRef(osSo, "_obstacleSprite", obstacleSprite);
+            else Debug.LogWarning("[SceneSetupTool] protector.png not found — obstacles will use solid square fallback.");
+
             // Interceptor missile sprite (rk.png) — fired by jets at incoming player rocket.
             var interceptorSprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Sprites/Generated/rk.png");
-            if (interceptorSprite != null)
-                osSo.FindProperty("_interceptorSprite").objectReferenceValue = interceptorSprite;
-            else
-                Debug.LogWarning("[SceneSetupTool] rk.png not found — jets will not fire interceptors.");
-            // Force-overwrite size for upscaled 1791x361 protector.png. Setup-Scene-only — Inspector
-            // edits stick because this only runs when the user explicitly invokes the setup tool.
-            osSo.FindProperty("_obstacleMinSize").floatValue = 0.196f;
-            osSo.FindProperty("_obstacleMaxSize").floatValue = 0.196f;
-            // Per-round random count 10..15 — denser walls so the gap is the only viable shot.
-            osSo.FindProperty("_obstacleCountMin").intValue = 10;
-            osSo.FindProperty("_obstacleCountMax").intValue = 15;
-            // Wall-slice tuning — 4 vertical columns with a 1.6u gap forces the player to thread
-            // the analytic arc instead of finding alternate trajectories.
-            osSo.FindProperty("_wallSliceCount").intValue = 4;
-            osSo.FindProperty("_wallGapHalfHeight").floatValue = 1.6f;
-            // Mandatory goal shield + cap — kills flat shots and forces a vertical gate descent.
-            osSo.FindProperty("_shieldDistanceAhead").floatValue = 6f;
-            osSo.FindProperty("_capHeightAboveGoal").floatValue = 3f;
-            osSo.FindProperty("_capHalfGapWidth").floatValue = 1.4f;
-            // Tighter Y range so jets cluster as a formation rather than scattering.
-            osSo.FindProperty("_spawnMinY").floatValue = -3f;
-            osSo.FindProperty("_spawnMaxY").floatValue = 13f;
-            // Min horizontal gap from launcher AND target (8u keeps the car visually clear of jets).
-            osSo.FindProperty("_spawnPaddingX").floatValue = 8f;
+            if (interceptorSprite != null) SafeAssignRef(osSo, "_interceptorSprite", interceptorSprite);
+            else Debug.LogWarning("[SceneSetupTool] rk.png not found — jets will not fire interceptors.");
+
+            // Wire the player rocket so the dive solver reads live flight params (drag/thrust).
+            if (rocket != null) SafeAssignRef(osSo, "_rocket", rocket.GetComponent<Rocket>());
+
+            // Force-overwrite values to current dive-puzzle schema. Each call logs a warning
+            // (not an exception) if the field doesn't exist, so a partial run still produces a
+            // useful scene + a list of fields you need to investigate.
+            SafeAssignFloat(osSo, "_obstacleMinSize", 0.196f);
+            SafeAssignFloat(osSo, "_obstacleMaxSize", 0.196f);
+            SafeAssignInt(osSo, "_jetCountMin", 12);
+            SafeAssignInt(osSo, "_jetCountMax", 20);
+            SafeAssignFloat(osSo, "_capHeightAboveTarget", 3f);
+            SafeAssignFloat(osSo, "_capSlotHalfRocketWidths", 1.0f);
+            SafeAssignFloat(osSo, "_shieldDistanceAhead", 6f);
+            SafeAssignFloat(osSo, "_tailDistanceBehind", 5f);
+            SafeAssignFloat(osSo, "_spawnMinY", -3f);
+            SafeAssignFloat(osSo, "_spawnMaxY", 13f);
+            SafeAssignFloat(osSo, "_spawnPaddingX", 8f);
             osSo.ApplyModifiedProperties();
 
             Debug.Log("[SceneSetupTool] RoundManager + ObstacleSpawner wired.");
+        }
+
+        /// <summary>Trace log — the last "→ Step X" printed before an exception identifies which setup phase threw.</summary>
+        private static void Step(string name) => Debug.Log($"[SceneSetupTool]   → Step: {name}");
+
+        private static void SafeAssignFloat(SerializedObject so, string field, float value)
+        {
+            var prop = so.FindProperty(field);
+            if (prop == null) { Debug.LogWarning($"[SceneSetupTool] Field '{field}' not found on {so.targetObject.GetType().Name} — skipped."); return; }
+            prop.floatValue = value;
+        }
+        private static void SafeAssignInt(SerializedObject so, string field, int value)
+        {
+            var prop = so.FindProperty(field);
+            if (prop == null) { Debug.LogWarning($"[SceneSetupTool] Field '{field}' not found on {so.targetObject.GetType().Name} — skipped."); return; }
+            prop.intValue = value;
+        }
+        private static void SafeAssignRef(SerializedObject so, string field, UnityEngine.Object value)
+        {
+            var prop = so.FindProperty(field);
+            if (prop == null) { Debug.LogWarning($"[SceneSetupTool] Field '{field}' not found on {so.targetObject.GetType().Name} — skipped."); return; }
+            prop.objectReferenceValue = value;
         }
 
         // -- LaunchController wiring (input only) --

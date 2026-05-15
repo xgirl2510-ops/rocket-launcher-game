@@ -117,9 +117,10 @@ namespace RocketLauncher
             _rocket.gameObject.SetActive(true);
             _rocket.ResetToPosition(_spawnPoint.position);
             _launchController.RotateRocketToDirection(dir);
-            // Auto-play uses pure ballistic flight (no drag, no thrust) so the trajectory
-            // matches the analytical solver's high-arc solution and reliably hits the target.
-            _rocket.LaunchBallistic(dir, force);
+            // Auto-play uses the SAME physics (drag + thrust) the player flies under because the
+            // dive solver simulated those exact params to find this (dir, force) pair. Switching
+            // to pure ballistic would diverge from the solved trajectory and miss the dive slot.
+            _rocket.Launch(dir, force);
             RocketTrajectoryPredictor.Instance.OnRocketLaunched(_spawnPoint.position, dir, force);
             if (AudioManager.Instance != null)
             {
@@ -153,16 +154,29 @@ namespace RocketLauncher
             _launchController.EnableInput();
         }
 
+        // Max re-rolls before we accept whatever position we last tried — protects against
+        // pathological config combos where no point in [min..max] is solvable. With the current
+        // range (X[8..36] Y[-4..8]) every roll has been observed to solve in ≤2 attempts.
+        private const int MaxTargetRerolls = 10;
+
         private void RandomizeTarget()
         {
             if (_targetTransform == null) return;
 
-            float x = Random.Range(_targetMinX, _targetMaxX);
-            float y = Random.Range(_targetMinY, _targetMaxY);
-            _targetTransform.position = new Vector3(x, y, _targetTransform.position.z);
+            // Re-roll the target position until ObstacleSpawner.RespawnObstacles reports a valid
+            // dive solution (apex above target, descent ≥60°, within rocket reach). If we exhaust
+            // retries we keep the last roll so the round still starts — the puzzle just won't
+            // have its full dive structure that one round.
+            for (int attempt = 0; attempt < MaxTargetRerolls; attempt++)
+            {
+                float x = Random.Range(_targetMinX, _targetMaxX);
+                float y = Random.Range(_targetMinY, _targetMaxY);
+                _targetTransform.position = new Vector3(x, y, _targetTransform.position.z);
 
-            if (_obstacleSpawner != null)
-                _obstacleSpawner.RespawnObstacles();
+                if (_obstacleSpawner == null) return;
+                if (_obstacleSpawner.RespawnObstacles()) return;
+            }
+            Debug.LogWarning("[RoundManager] No dive solution after " + MaxTargetRerolls + " rerolls — keeping last target.");
         }
 
         private void ReloadAfterAutoPlay()

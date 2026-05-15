@@ -51,6 +51,21 @@ namespace RocketLauncher
         /// <summary>Current linear velocity (read-only) — used by interceptor trajectory prediction.</summary>
         public Vector2 LinearVelocity => _rb != null ? _rb.linearVelocity : Vector2.zero;
 
+        /// <summary>
+        /// Snapshot of the player rocket's flight physics used by RocketDiveSolver to simulate
+        /// candidate trajectories with the EXACT same numbers the live rocket flies with.
+        /// </summary>
+        public RocketFlightParams GetFlightParams()
+        {
+            return new RocketFlightParams(
+                gravity: Physics2D.gravity.magnitude,
+                drag: _airDrag,
+                thrustForce: _thrustForce,
+                thrustDuration: _thrustDuration,
+                minForce: GameConstants.MinLaunchForce,
+                maxForce: GameConstants.MaxLaunchForce);
+        }
+
         private void Awake()
         {
             _rb = GetComponent<Rigidbody2D>();
